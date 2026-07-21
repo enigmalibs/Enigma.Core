@@ -233,7 +233,7 @@ src/Enigma.Core/
   scheme options (casing, padding). All are adjustable later without disturbing the skeleton (stubs throw).
 
 ### PHASE05 — Asymmetric
-- **Status:** TODO
+- **Status:** DONE
 - **Mapping:**
   - `PublicKey/IPublicKeyService, PublicKeyService` → `Enigma.Core.Asymmetric.PublicKey` → interface + sealed stub → RSA encrypt (PKCS#1 v1.5 + OAEP) & sign.
   - `PublicKey/IPublicKeyServiceFactory, PublicKeyServiceFactory` → same → interface + sealed stub.
@@ -245,6 +245,60 @@ src/Enigma.Core/
   - `PQC/IMLKemServiceFactory, MLKemServiceFactory` → same → interface + sealed stub.
 - **Flag:** the redesigned RSA/PQC APIs must expose key material as PEM/DER `string`/`byte[]`, not
   BouncyCastle `AsymmetricKeyParameter`/key-pair types (verify source signatures at build).
+
+**Build-time signature design (recorded per principle 8):**
+- **PublicKey** (`Enigma.Core.Asymmetric.PublicKey`) — RSA operates on data smaller than the modulus, so
+  it is inherently **in-memory**: all members are **sync `byte[]`** with **no `bufferSize`** on the
+  factory (mirrors the KDF/OTP in-memory decision; the "async-Stream vs sync-`byte[]` split" of
+  principle 4 applies only where the source streamed, which RSA does not).
+  - **`RsaOaepHash { Sha1, Sha256, Sha384, Sha512 }`** — ported verbatim (pure enum; the hash backing
+    RSAES-OAEP). Aligned with the four hashes of the root `RsaSignatureAlgorithm`; default `Sha256`.
+    **Referenced by an interface signature** (`EncryptOaep`/`DecryptOaep`), so it is in-scope for the
+    skeleton (unlike the deferred support types).
+  - **`IPublicKeyService`** — the two encryption padding schemes the plan names ("PKCS#1 v1.5 + OAEP")
+    are exposed as **explicit method pairs** rather than a padding-selector enum: `EncryptPkcs1`/
+    `DecryptPkcs1` and `EncryptOaep`/`DecryptOaep(…, RsaOaepHash hash = Sha256)`. This keeps the ported
+    `RsaOaepHash` meaningful (it is the OAEP method's hash parameter) without introducing a second
+    padding enum that would duplicate it; it also parallels the Padding module's per-scheme methods.
+    Signing uses `Sign(…, RsaSignatureAlgorithm algorithm = Sha256WithRsa, …)` / `Verify(…, algorithm)`,
+    consuming the PHASE01 root enum (as PHASE01 intended). Keys are PEM `string` (public/private).
+  - **`PemPasswordFinder` redesigned away** (principle 1 / support-type triage): the BouncyCastle
+    `IPasswordFinder` is replaced by a plain **`char[]? password = null`** parameter on the private-key
+    operations (`DecryptPkcs1`, `DecryptOaep`, `Sign`) — `null` = the PEM is not encrypted. `char[]`
+    (not `string`) is the conventional clearable passphrase representation and matches what
+    `IPasswordFinder.GetPassword()` returned. No `PemPasswordFinder` type is created.
+  - **`IPublicKeyServiceFactory.CreatePublicKeyService()`** — single, parameterless create (RSA is the
+    only algorithm; padding/OAEP-hash/signature-algorithm are per-call parameters, exactly as
+    block-cipher *mode* is a per-call parameter rather than a factory fan-out). Named for the service
+    type the plan mandates (`IPublicKeyService`), not `CreateRsaService`.
+- **Pqc** (`Enigma.Core.Asymmetric.Pqc`) — both schemes are in-memory ⇒ **sync `byte[]`**, no
+  `bufferSize`. Keys/ciphertexts/signatures are raw `byte[]` in their FIPS 203/204 encodings (the flag's
+  "PEM/DER `string`/`byte[]`" — `byte[]` chosen for these binary blobs). Multi-value results
+  (`GenerateKeyPair`, `Encapsulate`) use **named `ValueTuple`s** rather than new named DTOs, so no
+  support type outside the plan's triage is introduced.
+  - **New Enigma parameter-set enums** (owning-module, per the Notes' "new Enigma type … define it in
+    the owning module" rule — the redesign needs a BouncyCastle-free way to pick the security level via
+    the factory, principle 2): `MLDsaParameterSet { MLDsa44, MLDsa65, MLDsa87 }` (FIPS 204; default
+    `MLDsa65`, category 3) and `MLKemParameterSet { MLKem512, MLKem768, MLKem1024 }` (FIPS 203; default
+    `MLKem768`, category 3). Two-letter acronym `ML` stays upper-case per .NET naming guidelines
+    (matching the plan's `IMLDsaService`/`IMLKemService`).
+  - **`IMLDsaService`** (FIPS 204 signatures): `(byte[] publicKey, byte[] privateKey) GenerateKeyPair()`,
+    `byte[] Sign(byte[] message, byte[] privateKey)`, `bool Verify(byte[] message, byte[] signature,
+    byte[] publicKey)`. **`IMLDsaServiceFactory.CreateMLDsaService(MLDsaParameterSet parameterSet =
+    MLDsa65)`**.
+  - **`IMLKemService`** (FIPS 203 KEM): `(byte[] publicKey, byte[] privateKey) GenerateKeyPair()`,
+    `(byte[] ciphertext, byte[] sharedSecret) Encapsulate(byte[] publicKey)`, `byte[]
+    Decapsulate(byte[] ciphertext, byte[] privateKey)`. **`IMLKemServiceFactory.CreateMLKemService(
+    MLKemParameterSet parameterSet = MLKem768)`**.
+- **Source-parity note (no source lib in repo — designed at build, reviewed at PR, per principle 8):** to
+  verify against the original library at PR — (1) RSA key material: whether the source also accepted/
+  returned DER `byte[]` overloads or exposed key-pair generation on this service (kept to PEM `string` +
+  encrypt/sign per the mapping's stated scope); (2) whether encryption padding was a single method with a
+  scheme selector rather than the `EncryptPkcs1`/`EncryptOaep` pairs chosen here; (3) passphrase type
+  (`char[]` vs `string`) and exact `RsaOaepHash` member set; (4) PQC key representation (raw `byte[]` vs
+  PEM `string` vs a named key-pair DTO) and whether the source surfaced the parameter set on the factory
+  (as here) or per call; (5) exact PQC parameter-set member sets. All are adjustable later without
+  disturbing the skeleton (stubs throw).
 
 ### PHASE06 — Certificates
 - **Status:** TODO

@@ -11,5 +11,5 @@ records in `docs/done/<ID>.md`. Row order is the work order (append new items la
 | - PHASE02    | Symmetric (BlockCiphers, StreamCiphers) + Padding  | DONE        | (in FEATURE-4442.md)      |
 | - PHASE03    | Hashing (Hash, Hmac) + KeyDerivation               | DONE        | (in FEATURE-4442.md)      |
 | - PHASE04    | Otp + Encoding                                     | DONE        | (in FEATURE-4442.md)      |
-| - PHASE05    | Asymmetric (PublicKey, Pqc)                        | TODO        | (in FEATURE-4442.md)      |
+| - PHASE05    | Asymmetric (PublicKey, Pqc)                        | DONE        | (in FEATURE-4442.md)      |
 | - PHASE06    | Certificates (X.509)                               | TODO        | (in FEATURE-4442.md)      |
