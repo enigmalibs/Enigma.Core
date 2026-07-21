@@ -186,7 +186,7 @@ src/Enigma.Core/
 - **Source-parity note (no source lib in repo, per principle 8 designed at build & reviewed at PR):** the exact *member set* of the ported enums (`Pbkdf2Prf`) and the exact *parameter set* of `IArgon2Service.DeriveKey` (e.g. whether the source also exposed optional `secret`/`associatedData`) should be verified against the original library at PR. Chosen sets are the standard, internally-consistent minimum; adjusting them later does not disturb the skeleton (stubs throw).
 
 ### PHASE04 — Otp + Encoding
-- **Status:** TODO
+- **Status:** DONE
 - **Mapping:**
   - `Otp/IHotpService, HotpService` → `Enigma.Core.Otp` → interface + sealed stub.
   - `Otp/IHotpServiceFactory, HotpServiceFactory` → same → interface + sealed stub.
@@ -196,6 +196,41 @@ src/Enigma.Core/
   - `Otp/OtpProvisioning` **and** `Otp/OtpAuthParameters` → **defer together** to the OTP implementation feature: `OtpProvisioning` is a provisioning logic helper (depends on Encoding + secure random), and `OtpAuthParameters` is referenced ONLY by `OtpProvisioning` — no service/factory interface uses it, so it fails the skeleton's "referenced by an interface signature" test. Pull `OtpAuthParameters` into this phase only if the redesigned OTP service/factory ends up surfacing it.
   - `DataEncoding/IEncodingService` (+ `Base64Service`, `Base32Service`, `HexService`) → `Enigma.Core.Encoding` → interface + three sealed stubs.
   - `DataEncoding/IEncodingServiceFactory, EncodingServiceFactory` → same → interface + sealed stub.
+
+**Build-time signature design (recorded per principle 8):**
+- **Otp** (`Enigma.Core.Otp`) — both OTP schemes are in-memory (an HMAC over a small moving factor), so
+  **sync** APIs and **no `bufferSize`** on their factories (mirrors the KeyDerivation decision):
+  - `OtpHashAlgorithm { Sha1, Sha256, Sha512 }` — ported verbatim (pure). The HMAC hash backing an OTP.
+    Aligned with the HMAC/PBKDF2 PRF algorithm set; default is `Sha1` (the value authenticator apps
+    assume, RFC 4226/6238). Referenced by both OTP **factories**, not the services.
+  - **Config lives on the factory, secrets/time on the service call** (principle 2 — "algorithm chosen via
+    factory `Create*` methods and enums"). The digit count, time-step length and hash algorithm are
+    authenticator configuration, fixed for a given secret, so they are `Create*Service` parameters; the
+    secret + counter/timestamp vary per code, so they are service-method parameters.
+  - `IHotpService.GenerateCode(byte[] secret, long counter) : string` and
+    `VerifyCode(byte[] secret, long counter, string code) : bool` (RFC 4226).
+  - `IHotpServiceFactory.CreateHotpService(int digits = 6, OtpHashAlgorithm hashAlgorithm = OtpHashAlgorithm.Sha1) : IHotpService`.
+  - `ITotpService.GenerateCode(byte[] secret, DateTimeOffset timestamp) : string` and
+    `VerifyCode(byte[] secret, string code, DateTimeOffset timestamp, int window = 1) : bool` (RFC 6238).
+    `timestamp` is an explicit parameter (not read from an ambient clock) so the contract stays
+    deterministic and testable; `window` is the ±time-step drift tolerance, a per-verification concern.
+  - `ITotpServiceFactory.CreateTotpService(int digits = 6, int periodSeconds = 30, OtpHashAlgorithm hashAlgorithm = OtpHashAlgorithm.Sha1) : ITotpService`
+    (RFC 6238 default step = 30 s).
+  - **Deferred:** `OtpProvisioning` + `OtpAuthParameters` not created — no service/factory interface
+    references either (per the support-type triage), so they land with the OTP implementation feature.
+- **Encoding** (`Enigma.Core.Encoding`) — one interface, three per-scheme sealed stubs, one factory. All
+  in-memory, so **sync `byte[]`/`string`** and **no `bufferSize`**:
+  - `IEncodingService.Encode(byte[] data) : string` and `Decode(string encoded) : byte[]` — exact
+    inverses. A single interface shared by all schemes (the scheme is a factory choice, not a signature
+    difference), consistent with the block-cipher / hash single-interface + per-algorithm-factory pattern.
+  - `Base64Service`, `Base32Service`, `HexService` — three sealed stubs implementing `IEncodingService`.
+  - `IEncodingServiceFactory.CreateBase64Service() / CreateBase32Service() / CreateHexService()`, each
+    returning `IEncodingService`; `EncodingServiceFactory` sealed stub.
+- **Source-parity note (no source lib in repo — designed at build, reviewed at PR, per principle 8):** to
+  verify against the original library at PR — (1) the exact `OtpHashAlgorithm` member set; (2) whether the
+  source OTP services exposed a current-time convenience overload / put the TOTP validation window on the
+  factory rather than the call; (3) the exact `IEncodingService` member names and whether Hex/Base32 had
+  scheme options (casing, padding). All are adjustable later without disturbing the skeleton (stubs throw).
 
 ### PHASE05 — Asymmetric
 - **Status:** TODO
