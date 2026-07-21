@@ -1,0 +1,11 @@
+<Project>
+  <PropertyGroup>
+    <Authors>Josué Clément</Authors>
+    <Copyright>Copyright © 2026 Josué Clément</Copyright>
+    <LangVersion>14</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+  </PropertyGroup>
+</Project>

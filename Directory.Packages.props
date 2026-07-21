@@ -1,0 +1,16 @@
+<Project>
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+  <!-- Core library. BouncyCastle/System.Buffers are referenced by the real implementation
+       features later, NOT at skeleton stage. -->
+  <ItemGroup>
+    <PackageVersion Include="BouncyCastle.Cryptography" Version="2.6.2" />
+    <PackageVersion Include="System.Buffers" Version="4.6.1" />
+    <PackageVersion Include="PolySharp" Version="1.15.0" />
+  </ItemGroup>
+  <!-- Tests (MTP-native: xunit.v3 only) -->
+  <ItemGroup>
+    <PackageVersion Include="xunit.v3" Version="3.2.2" />
+  </ItemGroup>
+</Project>
