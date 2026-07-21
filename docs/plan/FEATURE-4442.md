@@ -1,6 +1,6 @@
 # FEATURE-4442 — Abstraction skeleton (interfaces + empty implementations)
 
-- **Status:** IN PROGRESS
+- **Status:** DONE (all 6 phases complete)
 - **Type:** FEATURE (multi-phase — 6 phases)
 - **Depends on:** FEATURE-56AA (repo/solution must exist first)
 - **Suggested branch per phase (at build):** `feature/feature-4442-phaseNN-<slug>` (one branch per phase)
@@ -301,13 +301,61 @@ src/Enigma.Core/
   disturbing the skeleton (stubs throw).
 
 ### PHASE06 — Certificates
-- **Status:** TODO
+- **Status:** DONE
 - **Mapping:**
   - `X509/IX509CertificateService, X509CertificateService` → `Enigma.Core.Certificates` → interface + sealed stub (self-signed generation, CSR/PKCS#10, issuance, chain + CRL validation).
   - `X509/IX509CertificateServiceFactory, X509CertificateServiceFactory` → same → interface + sealed stub.
   - `X509/CertificateInfo` → same → **redesign**: replace `Org.BouncyCastle.Math.BigInteger SerialNumber` with `System.Numerics.BigInteger` / `string` / `byte[]`; keep the other members.
 - **Flag:** certificate/CSR/chain APIs must take/return PEM/DER `string`/`byte[]`, not BouncyCastle
   `X509Certificate`/`Pkcs10CertificationRequest` (verify at build).
+
+**Build-time signature design (recorded per principle 8):**
+- **All in-memory ⇒ sync + no `bufferSize`.** Certificates, CSRs and CRLs are small structured blobs, not
+  streams — so (like the KDF/OTP/Asymmetric phases) every member is **sync** and the factory carries no
+  `bufferSize`. Principle 4's "async-Stream vs sync-`byte[]` split" applies only where the source streamed,
+  which X.509 does not.
+- **All PEM `string` I/O** (satisfies the flag). Certificates, CSRs, CRLs and keys cross the API as
+  PEM-encoded `string`; no BouncyCastle `X509Certificate`/`Pkcs10CertificationRequest`/`X509Crl` type
+  appears. DER `byte[]` overloads are **not** added here (kept lean, exactly as PHASE05 kept RSA to PEM
+  `string`); flagged for PR (source-parity note).
+- **Deterministic validity via explicit `DateTimeOffset`** (not an ambient clock) on generation/issuance —
+  mirrors PHASE04's TOTP decision to take an explicit timestamp so the contract stays testable.
+- **Signing algorithm = the PHASE01 root `RsaSignatureAlgorithm` enum** (default `Sha256WithRsa`) on
+  generation/issuance/CSR — exactly the consumer PHASE01 fixed the shared vocabulary for. *Selecting* a
+  signing algorithm uses the enum; *reading back* an existing cert's algorithm (`CertificateInfo`) is a
+  plain `string`, because a parsed cert may carry any algorithm (ECDSA, …), not just the four RSA variants
+  — this is the exact distinction PHASE01 anticipated ("`X509Utils` only ever *reads back* `SigAlgName`").
+- **`CertificateInfo` — REDESIGNED** (`src/Enigma.Core/Certificates/CertificateInfo.cs`): a
+  `public sealed record` with `required` init-only properties, each XML-documented. The BouncyCastle
+  `Org.BouncyCastle.Math.BigInteger SerialNumber` is replaced by **`System.Numerics.BigInteger`** (the
+  plan's chosen redesign). Member set (standard X.509 fields): `string Subject`, `string Issuer`,
+  `System.Numerics.BigInteger SerialNumber`, `DateTimeOffset NotBefore`, `DateTimeOffset NotAfter`,
+  `string SignatureAlgorithm` (read-back name), `int Version`, `string Thumbprint`. **In-scope for the
+  skeleton because it is referenced by an interface signature** (`GetCertificateInfo`) — unlike the
+  deferred support types. `System.Numerics.BigInteger` ships in `netstandard2.0` (no new package).
+- **`IX509CertificateService`** (`Enigma.Core.Certificates`) — six members covering the plan's named
+  capabilities:
+  - `string GenerateSelfSignedCertificate(string subjectDistinguishedName, string privateKeyPem, DateTimeOffset notBefore, DateTimeOffset notAfter, RsaSignatureAlgorithm signatureAlgorithm = Sha256WithRsa, char[]? password = null)` — self-signed generation.
+  - `string GenerateCertificateSigningRequest(string subjectDistinguishedName, string privateKeyPem, RsaSignatureAlgorithm signatureAlgorithm = Sha256WithRsa, char[]? password = null)` — CSR / PKCS#10.
+  - `string IssueCertificate(string certificateSigningRequestPem, string issuerCertificatePem, string issuerPrivateKeyPem, DateTimeOffset notBefore, DateTimeOffset notAfter, RsaSignatureAlgorithm signatureAlgorithm = Sha256WithRsa, char[]? password = null)` — issuance (sign a CSR with a CA).
+  - `bool ValidateChain(string certificatePem, IReadOnlyList<string> trustedRootPems, IReadOnlyList<string>? intermediatePems = null)` — chain validation.
+  - `bool IsRevoked(string certificatePem, string crlPem, string issuerCertificatePem)` — CRL validation.
+  - `CertificateInfo GetCertificateInfo(string certificatePem)` — parse/read-back (consumes the redesigned `CertificateInfo`).
+  - The `char[]? password` on the private-key-consuming operations reuses PHASE05's `PemPasswordFinder`-redesign convention (`null` = unencrypted PEM). No BouncyCastle in any signature (principle 1/2).
+- **`IX509CertificateServiceFactory.CreateX509CertificateService()`** — single, parameterless create (X.509
+  is the only "algorithm"; signature algorithm / validity / trust inputs are per-call parameters, exactly
+  as PHASE05's `CreatePublicKeyService()`). Named for the service type the plan mandates.
+- **All service/factory members throw `NotImplementedException`** (principle 5 / acceptance 3), including
+  the factory `Create*` method — so no concrete stub needs constructor parameters (avoids unused-field
+  errors under `TreatWarningsAsErrors`).
+- **Source-parity note (no source library in repo — designed at build, reviewed at PR, per principle 8):**
+  to verify against the original library at PR — (1) the exact `CertificateInfo` member set (whether
+  `Version`/`Thumbprint` were present; whether `SignatureAlgorithm` was a `string` or an enum); (2) whether
+  the source also took/returned DER `byte[]` overloads or exposed key-pair generation on this service (kept
+  to PEM `string` per the mapping's scope); (3) exact method names/signatures for generation, issuance,
+  chain and CRL validation (whether chain validation took explicit trusted-root/intermediate collections as
+  here, and whether revocation was a separate `IsRevoked` vs folded into chain validation); (4) passphrase
+  type (`char[]` vs `string`). All adjustable later without disturbing the skeleton (stubs throw).
 
 ## Deferred (NOT part of this skeleton; land with their implementation features)
 - `Extensions/*` — `StreamExtensions`, `EncodingExtensions`, `StreamReadHelpers` (pure helpers; no interface depends on them).

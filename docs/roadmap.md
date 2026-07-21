@@ -6,10 +6,10 @@ records in `docs/done/<ID>.md`. Row order is the work order (append new items la
 | ID           | Title                                              | Status      | Plan                      |
 |--------------|----------------------------------------------------|-------------|---------------------------|
 | FEATURE-56AA | Repository & solution bootstrap                    | DONE        | docs/plan/FEATURE-56AA.md |
-| FEATURE-4442 | Abstraction skeleton (interfaces + empty impls)    | IN PROGRESS | docs/plan/FEATURE-4442.md |
+| FEATURE-4442 | Abstraction skeleton (interfaces + empty impls)    | DONE        | docs/plan/FEATURE-4442.md |
 | - PHASE01    | Shared foundation (root types + shared enums)      | DONE        | (in FEATURE-4442.md)      |
 | - PHASE02    | Symmetric (BlockCiphers, StreamCiphers) + Padding  | DONE        | (in FEATURE-4442.md)      |
 | - PHASE03    | Hashing (Hash, Hmac) + KeyDerivation               | DONE        | (in FEATURE-4442.md)      |
 | - PHASE04    | Otp + Encoding                                     | DONE        | (in FEATURE-4442.md)      |
 | - PHASE05    | Asymmetric (PublicKey, Pqc)                        | DONE        | (in FEATURE-4442.md)      |
-| - PHASE06    | Certificates (X.509)                               | TODO        | (in FEATURE-4442.md)      |
+| - PHASE06    | Certificates (X.509)                               | DONE        | (in FEATURE-4442.md)      |
