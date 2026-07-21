@@ -158,7 +158,7 @@ src/Enigma.Core/
 - **Acceptance:** per-phase criteria (below); all block/stream/padding services throw `NotImplementedException`, no BouncyCastle in signatures.
 
 ### PHASE03 — Hashing + KeyDerivation
-- **Status:** TODO
+- **Status:** DONE
 - **Mapping:**
   - `Hash/IHashService, HashService` → `Enigma.Core.Hashing.Hash` → interface + sealed stub → keep async `Stream` + `IProgress<int>` + `CancellationToken`; factory `Create{Md5,Sha1,Sha256,Sha512,Sha3}Service`.
   - `Hash/IHashServiceFactory, HashServiceFactory` → same → interface + sealed stub.
@@ -170,6 +170,20 @@ src/Enigma.Core/
   - `KDF/IArgon2Service, Argon2Service` → same → interface + sealed stub.
   - `KDF/IArgon2ServiceFactory, Argon2ServiceFactory` → same → interface + sealed stub.
   - `KDF/Argon2Variant, Argon2Version` → same → port verbatim (pure; scrub BouncyCastle mentions from public docs).
+
+**Build-time signature design (recorded per principle 8):**
+- **Hashing.Hash** (`Enigma.Core.Hashing.Hash`):
+  - `IHashService.ComputeHashAsync(Stream input, IProgress<int>? progress = null, CancellationToken cancellationToken = default) : Task<byte[]>`. Async-stream only (per the plan's explicit "keep async Stream + IProgress + CancellationToken" for Hash) — returns the digest as `byte[]` rather than writing to an output stream, since a digest is small (unlike block-cipher ciphertext). **No sync `byte[]` overload** on Hash: the plan lists sync `byte[]` for HMAC only, a deliberate Hash-vs-HMAC distinction honored here.
+  - `IHashServiceFactory` — `CreateMd5Service`, `CreateSha1Service`, `CreateSha256Service`, `CreateSha512Service`, `CreateSha3Service` (SHA-3 = 256-bit), each `(int bufferSize = CryptoDefaults.StreamBufferSize)`. `bufferSize` param follows the PHASE02 stream/block factory convention (hashing is stream-based); the plan didn't spell it out but the established convention governs.
+- **Hashing.Hmac** (`Enigma.Core.Hashing.Hmac`):
+  - `IHmacService.ComputeHmac(byte[] data, byte[] key) : byte[]` (sync) **and** `ComputeHmacAsync(Stream input, byte[] key, IProgress<int>? progress = null, CancellationToken cancellationToken = default) : Task<byte[]>` (async stream) — the plan's explicit "sync `byte[]` + async `Stream` variants". Param order mirrors the block cipher: input/data first, `key` second.
+  - `IHmacServiceFactory` — `CreateHmacSha1Service`, `CreateHmacSha256Service`, `CreateHmacSha512Service`, each `(int bufferSize = CryptoDefaults.StreamBufferSize)`. **Naming rule = name the produced primitive:** "HMAC-SHA256" (RFC 2104 + SHA-256) is the primitive, hence the `Hmac` prefix — consistent with the Hash factory naming its primitive (`CreateSha256Service`). Chosen over bare `CreateSha256Service` on the HMAC factory to avoid reader ambiguity with plain hashing.
+- **KeyDerivation** (`Enigma.Core.KeyDerivation`) — both KDFs are in-memory (no streaming), so **sync `byte[]`** APIs and **no `bufferSize`** on their factories:
+  - Enums (ported verbatim, pure; BouncyCastle mentions scrubbed from docs): `Pbkdf2Prf { HmacSha1, HmacSha256, HmacSha512 }` (aligned with the HMAC service's algorithm set — a PBKDF2 PRF *is* an HMAC); `Argon2Variant { Argon2d, Argon2i, Argon2id }` (RFC 9106); `Argon2Version { Version10, Version13 }` (0x10 / 0x13, RFC 9106).
+  - `IPbkdf2Service.DeriveKey(byte[] password, byte[] salt, int iterations, int keySizeBytes, Pbkdf2Prf prf = Pbkdf2Prf.HmacSha256) : byte[]`. `IPbkdf2ServiceFactory.CreatePbkdf2Service()` — single create method; the PRF is a service-call enum parameter (same shape as `BlockCipherMode` on the block-cipher service), which is why the factory doesn't fan out per-PRF.
+  - `IArgon2Service.DeriveKey(byte[] password, byte[] salt, int iterations, int memorySizeKb, int degreeOfParallelism, int keySizeBytes, Argon2Variant variant = Argon2Variant.Argon2id, Argon2Version version = Argon2Version.Version13) : byte[]`. `IArgon2ServiceFactory.CreateArgon2Service()` — single create method; variant/version are service-call enum parameters.
+  - **`password` kept as `byte[]`** (not `char[]`/`string`): consistent with the byte-oriented library and not flagged for redesign by the plan (unlike PHASE05's `PemPasswordFinder`).
+- **Source-parity note (no source lib in repo, per principle 8 designed at build & reviewed at PR):** the exact *member set* of the ported enums (`Pbkdf2Prf`) and the exact *parameter set* of `IArgon2Service.DeriveKey` (e.g. whether the source also exposed optional `secret`/`associatedData`) should be verified against the original library at PR. Chosen sets are the standard, internally-consistent minimum; adjusting them later does not disturb the skeleton (stubs throw).
 
 ### PHASE04 — Otp + Encoding
 - **Status:** TODO
