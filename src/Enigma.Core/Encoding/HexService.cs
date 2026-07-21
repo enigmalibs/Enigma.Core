@@ -1,4 +1,5 @@
 using System;
+using Org.BouncyCastle.Utilities.Encoders;
 
 namespace Enigma.Core.Encoding;
 
@@ -6,14 +7,21 @@ namespace Enigma.Core.Encoding;
 /// Encodes and decodes binary data using hexadecimal (base-16) text.
 /// </summary>
 /// <remarks>
-/// Skeleton stub: members are not yet implemented and throw <see cref="NotImplementedException"/>.
-/// The concrete hexadecimal logic arrives with the encoding implementation feature.
+/// <see cref="Encode"/> emits <b>lowercase</b> hexadecimal; <see cref="Decode"/> accepts either case.
 /// </remarks>
 public sealed class HexService : IEncodingService
 {
     /// <inheritdoc />
-    public string Encode(byte[] data) => throw new NotImplementedException();
+    public string Encode(byte[] data)
+    {
+        if (data is null) throw new ArgumentNullException(nameof(data));
+        return Hex.ToHexString(data);
+    }
 
     /// <inheritdoc />
-    public byte[] Decode(string encoded) => throw new NotImplementedException();
+    public byte[] Decode(string encoded)
+    {
+        if (encoded is null) throw new ArgumentNullException(nameof(encoded));
+        return Hex.Decode(encoded);
+    }
 }

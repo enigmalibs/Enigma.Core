@@ -1,6 +1,6 @@
 # FEATURE-0399 — Encoding implementation (Base64, Hex, Base32)
 
-- **Status:** TODO
+- **Status:** DONE
 - **Type:** FEATURE (single-phase)
 - **Depends on:** FEATURE-61D1 (foundation — BouncyCastle package ref + CSV vector harness)
 - **Suggested branch (at build):** `feature/feature-0399-encoding`

@@ -14,7 +14,7 @@ records in `docs/done/<ID>.md`. Row order is the work order (append new items la
 | - PHASE05    | Asymmetric (PublicKey, Pqc)                        | DONE        | (in FEATURE-4442.md)      |
 | - PHASE06    | Certificates (X.509)                               | DONE        | (in FEATURE-4442.md)      |
 | FEATURE-61D1 | Implementation foundation (packages, test harness, shared Extensions/Utils) | DONE | docs/plan/FEATURE-61D1.md |
-| FEATURE-0399 | Encoding implementation (Base64, Hex, Base32) | TODO | docs/plan/FEATURE-0399.md |
+| FEATURE-0399 | Encoding implementation (Base64, Hex, Base32) | DONE | docs/plan/FEATURE-0399.md |
 | FEATURE-26A5 | Hashing implementation (Hash + HMAC) | TODO | docs/plan/FEATURE-26A5.md |
 | FEATURE-679F | KeyDerivation implementation (PBKDF2 + Argon2) | TODO | docs/plan/FEATURE-679F.md |
 | FEATURE-5761 | OTP implementation (HOTP, TOTP, provisioning) | TODO | docs/plan/FEATURE-5761.md |
