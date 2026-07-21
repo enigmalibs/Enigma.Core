@@ -1,0 +1,33 @@
+using Enigma.Core.Extensions;
+using System.IO;
+using System.Threading.Tasks;
+using Xunit;
+
+namespace Enigma.Core.UnitTests.Extensions;
+
+public class StreamExtensionsTagLengthValueTests
+{
+    [Fact]
+    public void WriteThenRead_TagLengthValue_RoundTrips()
+    {
+        using var output = new MemoryStream();
+        output.WriteTagLengthValue(255, [0, 1, 254, 255]);
+
+        using var input = new MemoryStream(output.ToArray());
+        var (tag, value) = input.ReadTagLengthValue();
+        Assert.Equal(255, tag);
+        Assert.Equal([0, 1, 254, 255], value);
+    }
+
+    [Fact]
+    public async Task WriteThenReadAsync_TagLengthValue_RoundTrips()
+    {
+        using var output = new MemoryStream();
+        await output.WriteTagLengthValueAsync(255, [0, 1, 254, 255], TestContext.Current.CancellationToken);
+
+        using var input = new MemoryStream(output.ToArray());
+        var (tag, value) = await input.ReadTagLengthValueAsync(cancellationToken: TestContext.Current.CancellationToken);
+        Assert.Equal(255, tag);
+        Assert.Equal([0, 1, 254, 255], value);
+    }
+}
