@@ -1,6 +1,6 @@
 # FEATURE-4442 — Abstraction skeleton (interfaces + empty implementations)
 
-- **Status:** TODO
+- **Status:** IN PROGRESS
 - **Type:** FEATURE (multi-phase — 6 phases)
 - **Depends on:** FEATURE-56AA (repo/solution must exist first)
 - **Suggested branch per phase (at build):** `feature/feature-4442-phaseNN-<slug>` (one branch per phase)
@@ -68,8 +68,27 @@ src/Enigma.Core/
 ## Phases
 
 ### PHASE01 — Shared foundation
-- **Status:** TODO
+- **Status:** DONE
 - **Scope:** root shared types + redesign baseline; no services.
+
+**Build-time signature design (recorded per principle 8):**
+- **`CryptoDefaults`** (root namespace `Enigma.Core`, file `src/Enigma.Core/CryptoDefaults.cs`) — ported
+  verbatim. `public static class CryptoDefaults { public const int StreamBufferSize = 4096; }`.
+- **Signature-algorithm representation — DECIDED: the recommended Enigma enum.** The old
+  `SignatureAlgorithms` public JCA-style string constants (`"SHA256withRSA"`, …) are **replaced** by a
+  root enum `public enum RsaSignatureAlgorithm { Sha1WithRsa, Sha256WithRsa, Sha384WithRsa, Sha512WithRsa }`
+  (root namespace `Enigma.Core`, file `src/Enigma.Core/RsaSignatureAlgorithm.cs`). This removes the
+  JCA/BouncyCastle naming leak (principle 1); the later implementation maps each member to its JCA name
+  internally. Verified against source usage: the only *choosable* signing algorithms across both
+  consumers — RSA signing (`PublicKeyServiceFactory`, PHASE05) and certificate signing
+  (`X509CertificateServiceFactory`, PHASE06) — are exactly these four RSA variants (default
+  `Sha256WithRsa`); `X509Utils` only ever *reads back* an existing cert's `SigAlgName`, it never selects
+  one. Hence the `Rsa…` name is correct and not too narrow. **PHASE05/06 consume this enum; they do not
+  revisit the representation.**
+- **No other shared root type introduced.** A symmetric cipher-mode enum is single-module (Symmetric —
+  PHASE02) so it lands in its owning module, not root. No unified hash-algorithm enum is created because
+  the plan deliberately keeps per-module hash enums (`OtpHashAlgorithm`, `RsaOaepHash`, `Pbkdf2Prf`,
+  ported verbatim in later phases) — unifying them would contradict the support-type triage.
 - Create root `Enigma.Core` types: `CryptoDefaults`; the shared **signature-algorithm** type (see next
   bullet); and any cross-cutting enums the redesign introduces (e.g. a shared symmetric cipher-mode enum,
   a shared hash-algorithm enum) — define here only if shared by ≥2 modules; otherwise define in the
