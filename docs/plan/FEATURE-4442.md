@@ -105,7 +105,47 @@ src/Enigma.Core/
 - **Acceptance:** compiles clean across all 3 TFMs; XML docs present; no BouncyCastle exposure.
 
 ### PHASE02 — Symmetric + Padding
-- **Status:** TODO
+- **Status:** DONE
+
+**Build-time signature design (recorded per principle 8):**
+- **New Enigma enums** (owning-module, not root — consistent with PHASE01's decision that single-module
+  enums live in their module):
+  - `Enigma.Core.Symmetric.BlockCiphers.BlockCipherMode { Ecb, Cbc, Ctr, Gcm }` — replaces the old
+    per-mode factory methods. Uses the standard name **`Ctr`** (not BouncyCastle's "SIC") to avoid
+    leaking BouncyCastle terminology (principle 1).
+  - `Enigma.Core.Padding.PaddingScheme { None, Pkcs7, Iso7816, Iso10126, X923 }` — the Enigma
+    padding-scheme enum replacing BouncyCastle `IBlockCipherPadding` types. Referenced by both the
+    Padding module and the block-cipher service's `padding` parameter (single source of truth).
+- **`IBlockCipherService`** (namespace `Enigma.Core.Symmetric.BlockCiphers`): the BouncyCastle
+  `ICipherParameters` parameter on `EncryptAsync`/`DecryptAsync` is replaced by
+  `byte[] key, byte[]? iv, BlockCipherMode mode` plus optional `PaddingScheme padding = Pkcs7` and
+  `int gcmMacSizeBits = GcmMacSize.MaxBits`; async-`Stream` + `IProgress<int>` + `CancellationToken`
+  kept (principle 4). `iv` is nullable (ECB uses none). Padding and GCM tag size are optional params so
+  the redesign preserves the configurability the old `Create*Service(paddingFactory)` overloads gave,
+  without any BouncyCastle type. GCM tag size is validated via the ported `GcmMacSize` helper by the
+  later implementation.
+- **`IBlockCipherServiceFactory`**: one `Create<Algo>Service(int bufferSize = CryptoDefaults.StreamBufferSize)`
+  per algorithm — `CreateAesService`, `CreateDesService`, `CreateTripleDesService`, `CreateBlowfishService`,
+  `CreateTwofishService`, `CreateSerpentService`, `CreateCamelliaService`, `CreateCast128Service`,
+  `CreateIdeaService`, `CreateSeedService`, `CreateAriaService`, `CreateSm4Service` (12). The BouncyCastle
+  `Func<IBlockCipher>`/`Func<IBlockCipherPadding>` engine/padding factory params are dropped (principle 3).
+- **`GcmMacSize`** ported verbatim to `Enigma.Core.Symmetric.BlockCiphers` (pure validation); public doc
+  scrubbed of the "underlying BouncyCastle GCM mode" phrasing (principles 6/7).
+- **StreamCiphers** — the source's public API was **already BouncyCastle-free** (`byte[] key, byte[] nonce`;
+  per-algorithm factory methods `CreateChaCha7539Service`/`CreateChaCha20Service`/`CreateSalsa20Service`).
+  Ported faithfully; the plan's "primitives + enums" note is satisfied by primitives + the existing
+  per-algorithm factory methods (no enum introduced — it would be a gratuitous change to an
+  already-clean, already-BouncyCastle-free contract, and it keeps the block/stream factory patterns
+  consistent). Only the impls (`StreamCipherService`, `StreamCipherServiceFactory`) were BouncyCastle-coupled → stubbed.
+- **Padding** — `IPaddingService` (`byte[] Pad/Unpad(byte[], int)`) and `IPaddingServiceFactory`
+  (`CreateNoPaddingService`/`CreatePkcs7Service`/`CreateIso7816Service`/`CreateIso10126Service`/`CreateX923Service`)
+  were already BouncyCastle-free → ported verbatim. The only leak was `PaddingService`'s
+  `Func<IBlockCipherPadding>` constructor → the redesigned stub carries no BouncyCastle (scheme is
+  represented by `PaddingScheme`); `NoPaddingService` kept as its own class per the plan.
+- **All service/factory members throw `NotImplementedException`** (principle 5 / acceptance 3), including
+  the factory `Create*` methods — so no concrete stub needs constructor parameters (avoids unused-field
+  errors under `TreatWarningsAsErrors`).
+
 - **Modules & mapping (old → new namespace → scaffold → redesign flags):**
   - `BlockCiphers/IBlockCipherService, BlockCipherService` → `Enigma.Core.Symmetric.BlockCiphers` → interface + sealed stub → replace BouncyCastle `ICipherParameters` param with `byte[] key`/`byte[] iv` + mode enum.
   - `BlockCiphers/IBlockCipherServiceFactory, BlockCipherServiceFactory` → same → interface + sealed stub → `Create*Service()` per algorithm (AES, DES, 3DES, Blowfish, Twofish, Serpent, Camellia, CAST-128, IDEA, SEED, ARIA, SM4); GCM MAC size via `GcmMacSize`.
