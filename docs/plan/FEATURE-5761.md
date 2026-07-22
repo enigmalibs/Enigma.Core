@@ -1,6 +1,6 @@
 # FEATURE-5761 — OTP implementation (HOTP, TOTP, provisioning)
 
-- **Status:** TODO
+- **Status:** IN PROGRESS (PHASE01 DONE; PHASE02 TODO)
 - **Type:** FEATURE (multi-phase — 2 phases)
 - **Depends on:** FEATURE-26A5 (hashing — HMAC), FEATURE-0399 (encoding — Base32 provisioning), FEATURE-61D1 (foundation — RandomUtils)
 - **Suggested branch (at build):** `feature/feature-5761-phaseNN-otp` (one branch per phase)
@@ -95,7 +95,7 @@ None of these appear in any public signature, base type, thrown-type, or public 
 - **foundation — FEATURE-61D1** (must land first): owns `Utils/RandomUtils` (BC `SecureRandom` wrapper) required by `GenerateSecret`, the internal BC package references, and the ported `CsvData`/`SyncProgress` test harness. If foundation does not own `Utils/RandomUtils`, this feature un-defers it locally.
 
 ## Phases
-### Phase 1 — HOTP/TOTP services + factories (full RFC parity)
+### Phase 1 — HOTP/TOTP services + factories (full RFC parity) — DONE
 - **Scope**: Implement `HotpService`, `HotpServiceFactory`, `TotpService`, `TotpServiceFactory` against the frozen contract AMENDED with the restored members; compose over `Core.Hashing.Hmac`. Port RFC 4226 §5.3 dynamic truncation and RFC 6238 time→step mapping; constant-time compare via internal BC `Arrays.FixedTimeEquals` over the whole window. Add the internal collaborator ctors.
 - **Members**: base `GenerateCode`/`VerifyCode`; **restored** HOTP window + matched-counter overloads, TOTP matched-step overload, `GetRemainingSeconds(DateTimeOffset)`, and the current-time convenience overloads. Each amendment lands first as a throwing stub, then implemented.
 - **Tests**: `hotp.csv`/`totp.csv` vectors + all `HotpTests`/`TotpTests` behavior tests, including the restored window/matched-counter/matched-step/GetRemainingSeconds/default-timestamp tests; the reflection BC-leak guard.
