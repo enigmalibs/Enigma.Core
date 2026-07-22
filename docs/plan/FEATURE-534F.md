@@ -1,6 +1,6 @@
 # FEATURE-534F — Symmetric implementation (Block + Stream ciphers) + Padding
 
-- **Status:** TODO
+- **Status:** IN PROGRESS (PHASE01 done; PHASE02 next)
 - **Type:** FEATURE (multi-phase — 3 phases)
 - **Depends on:** FEATURE-61D1 (foundation — stream Extensions + package ref + harness)
 - **Suggested branch (at build):** `feature/feature-534f-phaseNN-symmetric` (one branch per phase)
@@ -123,6 +123,7 @@ No other feature is required; symmetric (FEATURE-534F) has no dependency on enco
 
 ## Phases
 ### Phase A — Padding
+- **Status:** DONE (see docs/done/FEATURE-534F-PHASE01.md)
 - **Scope:** Implement the Padding module first (it is the dependency of the block-cipher padded path). Re-introduce the internal `PaddingScheme` → BC-padding seam (`Pkcs7Padding`/`ISO7816d4Padding`/`ISO10126d2Padding`/`X923Padding`); implement `PaddingService` (internal ctor taking `PaddingScheme`), `NoPaddingService`, `PaddingServiceFactory`; supply an internal `SecureRandom`/RNG for ISO10126/X923; preserve Pad/Unpad validation (block size 1..255, padded-length checks).
 - **Members/tests:** `IPaddingService`, `PaddingService`, `NoPaddingService`, `IPaddingServiceFactory`, `PaddingServiceFactory`; PKCS#7 / ISO 7816-4 / X9.23 KAT + ISO 10126-2 round-trip; padding progress/cancellation where applicable.
 - **Acceptance:** padding KAT vectors pass; ISO10126 round-trip passes; no BC type in the public padding surface.
