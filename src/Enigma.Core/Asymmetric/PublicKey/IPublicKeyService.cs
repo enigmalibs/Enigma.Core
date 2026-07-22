@@ -12,6 +12,20 @@ namespace Enigma.Core.Asymmetric.PublicKey;
 /// </remarks>
 public interface IPublicKeyService
 {
+    /// <summary>Generates a fresh RSA key pair and returns both keys as PEM-encoded text.</summary>
+    /// <param name="keySizeBits">The RSA modulus size in bits. Larger keys are stronger but slower; 2048 is the recommended minimum. Defaults to 2048.</param>
+    /// <param name="password">
+    /// A passphrase used to encrypt the returned private-key PEM (AES-256-CBC), or <see langword="null"/> to
+    /// return the private key unencrypted. The array is not cleared by this method — the caller owns clearing it.
+    /// </param>
+    /// <returns>
+    /// A tuple of PEM-encoded keys: <c>publicKeyPem</c> is a <c>PUBLIC KEY</c> PEM, and <c>privateKeyPem</c> is an
+    /// unencrypted <c>PRIVATE KEY</c> PEM when <paramref name="password"/> is <see langword="null"/>, or an
+    /// AES-256-CBC-encrypted private-key PEM otherwise.
+    /// </returns>
+    /// <exception cref="System.ArgumentException"><paramref name="keySizeBits"/> is not greater than zero.</exception>
+    (string publicKeyPem, string privateKeyPem) GenerateRsaKeyPair(int keySizeBits = 2048, char[]? password = null);
+
     /// <summary>Encrypts data with an RSA public key using PKCS#1 v1.5 padding.</summary>
     /// <param name="data">The plaintext to encrypt. Must be short enough for the key size and padding.</param>
     /// <param name="publicKeyPem">The RSA public key, PEM-encoded.</param>

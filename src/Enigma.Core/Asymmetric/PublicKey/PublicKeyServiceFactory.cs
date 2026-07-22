@@ -1,16 +1,12 @@
-using System;
-
 namespace Enigma.Core.Asymmetric.PublicKey;
 
 /// <summary>
-/// A factory for creating RSA public-key services.
+/// Default <see cref="IPublicKeyServiceFactory"/> implementation. RSA is the only algorithm, so the factory
+/// takes no configuration; the padding scheme, OAEP hash and signature algorithm are chosen per call on the
+/// returned service.
 /// </summary>
-/// <remarks>
-/// Skeleton stub: members are not yet implemented and throw <see cref="NotImplementedException"/>.
-/// The concrete factory logic arrives with the public-key implementation feature.
-/// </remarks>
 public sealed class PublicKeyServiceFactory : IPublicKeyServiceFactory
 {
     /// <inheritdoc />
-    public IPublicKeyService CreatePublicKeyService() => throw new NotImplementedException();
+    public IPublicKeyService CreatePublicKeyService() => new PublicKeyService();
 }

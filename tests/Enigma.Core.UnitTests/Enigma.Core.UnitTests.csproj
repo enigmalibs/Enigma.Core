@@ -20,5 +20,10 @@
     <None Update="**/*.csv">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <!-- PEM key fixtures (e.g. the RSA public-key tests) are loaded by relative path next to the test
+         assembly, mirroring the CSV vector convention above. -->
+    <None Update="**/*.pem">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 </Project>
