@@ -1,6 +1,6 @@
 # FEATURE-534F — Symmetric implementation (Block + Stream ciphers) + Padding
 
-- **Status:** IN PROGRESS (PHASE01–02 done; PHASE03 next)
+- **Status:** DONE (all phases complete)
 - **Type:** FEATURE (multi-phase — 3 phases)
 - **Depends on:** FEATURE-61D1 (foundation — stream Extensions + package ref + harness)
 - **Suggested branch (at build):** `feature/feature-534f-phaseNN-symmetric` (one branch per phase)
@@ -135,6 +135,7 @@ No other feature is required; symmetric (FEATURE-534F) has no dependency on enco
 - **Acceptance:** all block KAT pass; Ctr reproduces old SIC vectors; 12-algorithm round-trips pass; AAD round-trip passes; tamper/AAD-mismatch throw `CryptographicException`; 64-bit-block GCM/CTR rejected; reflection guard passes.
 
 ### Phase C — StreamCiphers
+- **Status:** DONE (see docs/done/FEATURE-534F-PHASE03.md)
 - **Scope:** Implement `StreamCipherService` (internal `BufferedStreamCipher` + `ParametersWithIV` wiring) and `StreamCipherServiceFactory` (`ChaCha7539Engine`/`ChaChaEngine`/`Salsa20Engine`). Public shape already matches.
 - **Members/tests:** `IStreamCipherService`, `StreamCipherService`, `IStreamCipherServiceFactory`, `StreamCipherServiceFactory`; ChaCha20 / ChaCha20-RFC7539 / Salsa20 KAT.
 - **Acceptance:** all stream KAT vectors pass; no BC type in the public stream surface.
