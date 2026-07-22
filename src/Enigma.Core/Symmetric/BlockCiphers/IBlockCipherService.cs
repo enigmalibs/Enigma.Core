@@ -35,6 +35,12 @@ public interface IBlockCipherService
     /// <see cref="BlockCipherMode.Gcm"/>; must satisfy <see cref="GcmMacSize.IsValid"/>. Defaults to
     /// <see cref="GcmMacSize.MaxBits"/>.
     /// </param>
+    /// <param name="associatedData">
+    /// Optional additional authenticated data (AAD), used only when <paramref name="mode"/> is
+    /// <see cref="BlockCipherMode.Gcm"/>: it is authenticated but not encrypted, and the same value must
+    /// be supplied on decryption or authentication fails. Must be <c>null</c> or empty for the other
+    /// modes. Defaults to <c>null</c>.
+    /// </param>
     /// <param name="progress">Optional progress reporting mechanism that reports bytes processed.</param>
     /// <param name="cancellationToken">Optional cancellation token to cancel the operation.</param>
     /// <returns>A task representing the asynchronous encryption operation.</returns>
@@ -46,6 +52,7 @@ public interface IBlockCipherService
         BlockCipherMode mode,
         PaddingScheme padding = PaddingScheme.Pkcs7,
         int gcmMacSizeBits = GcmMacSize.MaxBits,
+        byte[]? associatedData = null,
         IProgress<int>? progress = null,
         CancellationToken cancellationToken = default);
 
@@ -71,6 +78,12 @@ public interface IBlockCipherService
     /// <see cref="BlockCipherMode.Gcm"/>; must satisfy <see cref="GcmMacSize.IsValid"/>. Defaults to
     /// <see cref="GcmMacSize.MaxBits"/>.
     /// </param>
+    /// <param name="associatedData">
+    /// Optional additional authenticated data (AAD), used only when <paramref name="mode"/> is
+    /// <see cref="BlockCipherMode.Gcm"/>: it must match the value supplied on encryption or
+    /// authentication fails (surfacing as a <see cref="System.Security.Cryptography.CryptographicException"/>).
+    /// Must be <c>null</c> or empty for the other modes. Defaults to <c>null</c>.
+    /// </param>
     /// <param name="progress">Optional progress reporting mechanism that reports bytes processed.</param>
     /// <param name="cancellationToken">Optional cancellation token to cancel the operation.</param>
     /// <returns>A task representing the asynchronous decryption operation.</returns>
@@ -82,6 +95,7 @@ public interface IBlockCipherService
         BlockCipherMode mode,
         PaddingScheme padding = PaddingScheme.Pkcs7,
         int gcmMacSizeBits = GcmMacSize.MaxBits,
+        byte[]? associatedData = null,
         IProgress<int>? progress = null,
         CancellationToken cancellationToken = default);
 }

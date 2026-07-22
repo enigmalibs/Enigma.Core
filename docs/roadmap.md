@@ -22,7 +22,7 @@ records in `docs/done/<ID>.md`. Row order is the work order (append new items la
 | - PHASE02 | Provisioning (un-defer OtpProvisioning + OtpAuthParameters as DI service) | DONE | (in FEATURE-5761.md) |
 | FEATURE-534F | Symmetric implementation (Block + Stream ciphers) + Padding | IN PROGRESS | docs/plan/FEATURE-534F.md |
 | - PHASE01 | Padding | DONE | (in FEATURE-534F.md) |
-| - PHASE02 | BlockCiphers (12 algorithms, 4 modes incl. GCM + AAD) | TODO | (in FEATURE-534F.md) |
+| - PHASE02 | BlockCiphers (12 algorithms, 4 modes incl. GCM + AAD) | DONE | (in FEATURE-534F.md) |
 | - PHASE03 | StreamCiphers | TODO | (in FEATURE-534F.md) |
 | FEATURE-2E3E | Asymmetric.PublicKey implementation (RSA) | TODO | docs/plan/FEATURE-2E3E.md |
 | FEATURE-0D6D | Asymmetric.Pqc implementation (ML-DSA, ML-KEM) | TODO | docs/plan/FEATURE-0D6D.md |

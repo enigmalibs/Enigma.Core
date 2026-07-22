@@ -1,6 +1,6 @@
 # FEATURE-534F — Symmetric implementation (Block + Stream ciphers) + Padding
 
-- **Status:** IN PROGRESS (PHASE01 done; PHASE02 next)
+- **Status:** IN PROGRESS (PHASE01–02 done; PHASE03 next)
 - **Type:** FEATURE (multi-phase — 3 phases)
 - **Depends on:** FEATURE-61D1 (foundation — stream Extensions + package ref + harness)
 - **Suggested branch (at build):** `feature/feature-534f-phaseNN-symmetric` (one branch per phase)
@@ -129,6 +129,7 @@ No other feature is required; symmetric (FEATURE-534F) has no dependency on enco
 - **Acceptance:** padding KAT vectors pass; ISO10126 round-trip passes; no BC type in the public padding surface.
 
 ### Phase B — BlockCiphers (12 algorithms, 4 modes incl. GCM + AAD)
+- **Status:** DONE (see docs/done/FEATURE-534F-PHASE02.md)
 - **Scope:** Re-introduce internal engine factory (`AesEngine`..`SM4Engine`), internal mode wiring (`EcbBlockCipher`/`CbcBlockCipher`/`SicBlockCipher`/`GcmBlockCipher` + `BufferedBlockCipher`/`PaddedBufferedBlockCipher`/`BufferedAeadBlockCipher`), and internal parameters factory (`KeyParameter`/`ParametersWithIV`/`AeadParameters`, **including AAD**). Implement `BlockCipherService` (CipherStream + ArrayPool streaming) and `BlockCipherServiceFactory` (12 `Create<Algo>Service`). Enforce mode/algorithm compatibility (GCM/CTR 128-bit only), IV validation, `GcmMacSize` validation, wrap GCM auth failure in `CryptographicException`. **Restored member:** implement the `byte[]? associatedData` AAD path (added as a throwing stub at the start of this phase, then implemented).
 - **Members/tests:** `IBlockCipherService` (+ AAD amendment), `BlockCipherService`, `IBlockCipherServiceFactory`, `BlockCipherServiceFactory`, `GcmMacSize`; AES/DES/3DES/Blowfish CBC+ECB+CTR KAT (`PaddingScheme.None`), AES-GCM KAT + tamper test, **GCM+AAD round-trip + AAD-mismatch test**, GCM/CTR-on-64-bit-block rejection, padding-ignored-on-Ctr/Gcm, Pkcs7 non-block-aligned round-trip, null/short IV validation, `AdditionalEngineTests` (8 remaining engines), progress/cancellation, and the no-BouncyCastle-in-public-API reflection guard.
 - **Acceptance:** all block KAT pass; Ctr reproduces old SIC vectors; 12-algorithm round-trips pass; AAD round-trip passes; tamper/AAD-mismatch throw `CryptographicException`; 64-bit-block GCM/CTR rejected; reflection guard passes.
