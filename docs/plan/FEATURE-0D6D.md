@@ -1,6 +1,6 @@
 # FEATURE-0D6D — Asymmetric.Pqc implementation (ML-DSA, ML-KEM)
 
-- **Status:** TODO
+- **Status:** DONE
 - **Type:** FEATURE (single-phase)
 - **Depends on:** FEATURE-61D1 (foundation — package ref; verify BC 2.6.2 ML-DSA/ML-KEM across all 3 TFMs)
 - **Suggested branch (at build):** `feature/feature-0d6d-pqc`

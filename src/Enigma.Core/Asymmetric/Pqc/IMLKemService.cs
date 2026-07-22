@@ -8,7 +8,11 @@ namespace Enigma.Core.Asymmetric.Pqc;
 public interface IMLKemService
 {
     /// <summary>Generates a fresh ML-KEM key pair for the service's parameter set.</summary>
-    /// <returns>The encoded public (encapsulation) and private (decapsulation) keys.</returns>
+    /// <returns>
+    /// The encoded public (encapsulation) and private (decapsulation) keys. The private key is the
+    /// <b>expanded</b> FIPS 203 decapsulation-key encoding (not the seed), so it is directly usable by
+    /// <see cref="Decapsulate"/>.
+    /// </returns>
     (byte[] publicKey, byte[] privateKey) GenerateKeyPair();
 
     /// <summary>Encapsulates a fresh shared secret against a recipient's public key.</summary>

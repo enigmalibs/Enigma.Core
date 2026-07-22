@@ -8,7 +8,11 @@ namespace Enigma.Core.Asymmetric.Pqc;
 public interface IMLDsaService
 {
     /// <summary>Generates a fresh ML-DSA key pair for the service's parameter set.</summary>
-    /// <returns>The encoded public and private keys.</returns>
+    /// <returns>
+    /// The encoded public and private keys. The public key is the standard FIPS 204 verification key; the private
+    /// key is the <b>expanded</b> secret-key encoding (not the 32-byte seed), so it is directly usable by
+    /// <see cref="Sign"/> without seed re-derivation.
+    /// </returns>
     (byte[] publicKey, byte[] privateKey) GenerateKeyPair();
 
     /// <summary>Signs a message with an ML-DSA private key.</summary>

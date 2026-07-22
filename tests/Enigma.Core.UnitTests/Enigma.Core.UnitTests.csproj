@@ -25,5 +25,16 @@
     <None Update="**/*.pem">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <!-- Binary/raw PQC fixtures: raw FIPS 203/204 key bytes (*.key), signatures/ciphertexts/secrets
+         (*.bin) and the signed message (*.txt), loaded by relative path next to the test assembly. -->
+    <None Update="**/*.key">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="**/*.bin">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="**/*.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 </Project>
