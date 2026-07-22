@@ -1,6 +1,6 @@
 # FEATURE-099B — Certificates implementation (X.509)
 
-- **Status:** TODO
+- **Status:** IN PROGRESS (PHASE01 DONE; PHASE02 next)
 - **Type:** FEATURE (multi-phase — 3 phases)
 - **Depends on:** FEATURE-2E3E (publickey — RSA keygen + PEM); transitively FEATURE-61D1
 - **Suggested branch (at build):** `feature/feature-099b-phaseNN-certificates-x509` (one branch per phase)
@@ -107,6 +107,10 @@ No RFC/NIST/FIPS KAT vectors or CSV resources exist for X.509 — all old tests 
 
 ## Phases
 ### Phase 1 — Generation, CSR & issuance (+ restored extension controls & CSR verification)
+**Status: DONE** (see `docs/done/FEATURE-099B-PHASE01.md`). Read-back decision: `GetCertificateInfo`'s
+core fields were implemented in this phase (user-approved 2026-07-22) so generation could be asserted through
+the public PEM API; the restored `CertificateInfo` extension fields, PFX and DER remain in Phase 3.
+
 Un-defer `Utils/PemUtils` + `Utils/X509Utils` as internal helpers. Add the amendments as throwing stubs first: `X509KeyUsage` enum, `X509CertificateOptions` record, the trailing `options` param on `GenerateSelfSignedCertificate` / `IssueCertificate`, and `IsCertificateSigningRequestValid`. Then implement `GenerateSelfSignedCertificate`, `GenerateCertificateSigningRequest`, `IssueCertificate` and the parameterless factory, with the internal `RsaSignatureAlgorithm`→JCA mapping, `char[]?` password PEM decryption, extension emission (CA `BasicConstraints` / `KeyUsage` / SAN), and internal CSR verification. This phase gates CA-capable certs needed by Phase 2. Port `SelfSignedCertificateTests`, `CsrTests`, `IssueCertificateTests`, the no-BouncyCastle-leak reflection test, and encrypted-PEM tests.
 Acceptance: self-signed/CSR/issuance behaviours pass; CA extensions produce validatable anchors; `IsCertificateSigningRequestValid` true/false correct; reflection test green.
 

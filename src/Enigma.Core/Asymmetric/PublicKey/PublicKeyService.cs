@@ -85,7 +85,7 @@ public sealed class PublicKeyService : IPublicKeyService
     {
         if (data is null) throw new ArgumentNullException(nameof(data));
 
-        var signer = SignerUtilities.GetSigner(ToJcaName(algorithm));
+        var signer = SignerUtilities.GetSigner(SignatureAlgorithms.ToJcaName(algorithm));
         var key = PemUtils.ParsePrivateKey(privateKeyPem, password);
         signer.Init(forSigning: true, key);
         signer.BlockUpdate(data, 0, data.Length);
@@ -105,7 +105,7 @@ public sealed class PublicKeyService : IPublicKeyService
         if (data is null) throw new ArgumentNullException(nameof(data));
         if (signature is null) throw new ArgumentNullException(nameof(signature));
 
-        var signer = SignerUtilities.GetSigner(ToJcaName(algorithm));
+        var signer = SignerUtilities.GetSigner(SignatureAlgorithms.ToJcaName(algorithm));
         var key = PemUtils.ParsePublicKey(publicKeyPem);
         signer.Init(forSigning: false, key);
         signer.BlockUpdate(data, 0, data.Length);
@@ -127,16 +127,6 @@ public sealed class PublicKeyService : IPublicKeyService
                 "different key or padding.", ex);
         }
     }
-
-    // Maps the public signature-algorithm enum to the internal JCA standard name BouncyCastle resolves.
-    private static string ToJcaName(RsaSignatureAlgorithm algorithm) => algorithm switch
-    {
-        RsaSignatureAlgorithm.Sha1WithRsa => "SHA1withRSA",
-        RsaSignatureAlgorithm.Sha256WithRsa => "SHA256withRSA",
-        RsaSignatureAlgorithm.Sha384WithRsa => "SHA384withRSA",
-        RsaSignatureAlgorithm.Sha512WithRsa => "SHA512withRSA",
-        _ => throw new ArgumentOutOfRangeException(nameof(algorithm), algorithm, "Unsupported RSA signature algorithm."),
-    };
 
     // Maps the public OAEP-hash enum to the internal BouncyCastle digest (used for both the OAEP hash and MGF1).
     private static IDigest CreateOaepDigest(RsaOaepHash hash) => hash switch

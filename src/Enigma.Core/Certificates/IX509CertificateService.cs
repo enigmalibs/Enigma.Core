@@ -22,8 +22,9 @@ public interface IX509CertificateService
     /// <param name="notAfter">The inclusive end of the certificate's validity period.</param>
     /// <param name="signatureAlgorithm">The algorithm used to sign the certificate. Defaults to <see cref="RsaSignatureAlgorithm.Sha256WithRsa"/>.</param>
     /// <param name="password">The passphrase protecting an encrypted private-key PEM, or <see langword="null"/> if the PEM is not encrypted.</param>
+    /// <param name="options">Optional X.509 v3 extensions (CA flag, key usage, subject alternative names) to embed, or <see langword="null"/> to embed none.</param>
     /// <returns>The self-signed certificate, PEM-encoded.</returns>
-    string GenerateSelfSignedCertificate(string subjectDistinguishedName, string privateKeyPem, DateTimeOffset notBefore, DateTimeOffset notAfter, RsaSignatureAlgorithm signatureAlgorithm = RsaSignatureAlgorithm.Sha256WithRsa, char[]? password = null);
+    string GenerateSelfSignedCertificate(string subjectDistinguishedName, string privateKeyPem, DateTimeOffset notBefore, DateTimeOffset notAfter, RsaSignatureAlgorithm signatureAlgorithm = RsaSignatureAlgorithm.Sha256WithRsa, char[]? password = null, X509CertificateOptions? options = null);
 
     /// <summary>Generates a PKCS#10 certificate signing request (CSR) for the given subject and key.</summary>
     /// <param name="subjectDistinguishedName">The subject distinguished name to request a certificate for.</param>
@@ -33,6 +34,12 @@ public interface IX509CertificateService
     /// <returns>The certificate signing request, PEM-encoded.</returns>
     string GenerateCertificateSigningRequest(string subjectDistinguishedName, string privateKeyPem, RsaSignatureAlgorithm signatureAlgorithm = RsaSignatureAlgorithm.Sha256WithRsa, char[]? password = null);
 
+    /// <summary>Determines whether a certificate signing request is well-formed and carries a valid self-signature.</summary>
+    /// <param name="certificateSigningRequestPem">The certificate signing request to verify, PEM-encoded.</param>
+    /// <returns><see langword="true"/> if the CSR parses and its signature verifies against its own embedded public key; otherwise <see langword="false"/>.</returns>
+    /// <exception cref="System.ArgumentException"><paramref name="certificateSigningRequestPem"/> is empty or is not a well-formed CSR PEM.</exception>
+    bool IsCertificateSigningRequestValid(string certificateSigningRequestPem);
+
     /// <summary>Issues a certificate by signing a certificate signing request with an issuer's certificate and key.</summary>
     /// <param name="certificateSigningRequestPem">The CSR to issue a certificate for, PEM-encoded.</param>
     /// <param name="issuerCertificatePem">The issuing (CA) certificate, PEM-encoded; its subject becomes the issued certificate's issuer.</param>
@@ -41,8 +48,9 @@ public interface IX509CertificateService
     /// <param name="notAfter">The inclusive end of the issued certificate's validity period.</param>
     /// <param name="signatureAlgorithm">The algorithm used to sign the issued certificate. Defaults to <see cref="RsaSignatureAlgorithm.Sha256WithRsa"/>.</param>
     /// <param name="password">The passphrase protecting an encrypted issuer private-key PEM, or <see langword="null"/> if the PEM is not encrypted.</param>
+    /// <param name="options">Optional X.509 v3 extensions (CA flag, key usage, subject alternative names) to embed on the issued certificate, or <see langword="null"/> to embed none.</param>
     /// <returns>The issued certificate, PEM-encoded.</returns>
-    string IssueCertificate(string certificateSigningRequestPem, string issuerCertificatePem, string issuerPrivateKeyPem, DateTimeOffset notBefore, DateTimeOffset notAfter, RsaSignatureAlgorithm signatureAlgorithm = RsaSignatureAlgorithm.Sha256WithRsa, char[]? password = null);
+    string IssueCertificate(string certificateSigningRequestPem, string issuerCertificatePem, string issuerPrivateKeyPem, DateTimeOffset notBefore, DateTimeOffset notAfter, RsaSignatureAlgorithm signatureAlgorithm = RsaSignatureAlgorithm.Sha256WithRsa, char[]? password = null, X509CertificateOptions? options = null);
 
     /// <summary>Validates that a certificate chains to one of the supplied trusted roots.</summary>
     /// <param name="certificatePem">The leaf certificate to validate, PEM-encoded.</param>
