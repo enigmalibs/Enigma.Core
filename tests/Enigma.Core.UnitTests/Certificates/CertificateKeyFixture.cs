@@ -21,6 +21,7 @@ public sealed class CertificateKeyFixture
         (_, RootPrivateKeyPem) = keyGen.GenerateRsaKeyPair(2048);
         (_, IntermediatePrivateKeyPem) = keyGen.GenerateRsaKeyPair(2048);
         (_, LeafPrivateKeyPem) = keyGen.GenerateRsaKeyPair(2048);
+        (_, UnrelatedRootPrivateKeyPem) = keyGen.GenerateRsaKeyPair(2048);
         (_, EncryptedPrivateKeyPem) = keyGen.GenerateRsaKeyPair(2048, EncryptedKeyPassword);
     }
 
@@ -32,6 +33,9 @@ public sealed class CertificateKeyFixture
 
     /// <summary>A third, independent unencrypted 2048-bit RSA private key, PEM-encoded (used as a leaf / requester key).</summary>
     public string LeafPrivateKeyPem { get; }
+
+    /// <summary>A fourth, independent unencrypted 2048-bit RSA private key, PEM-encoded (used as an unrelated/untrusted root key).</summary>
+    public string UnrelatedRootPrivateKeyPem { get; }
 
     /// <summary>A 2048-bit RSA private key encrypted (AES-256-CBC) under <see cref="EncryptedKeyPassword"/>, PEM-encoded.</summary>
     public string EncryptedPrivateKeyPem { get; }

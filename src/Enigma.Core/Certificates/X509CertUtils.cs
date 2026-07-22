@@ -112,6 +112,20 @@ internal static class X509CertUtils
         };
     }
 
+    /// <summary>Parses an X.509 certificate revocation list from a PEM string.</summary>
+    internal static X509Crl ReadCrl(string crlPem, string paramName)
+    {
+        if (crlPem is null) throw new ArgumentNullException(paramName);
+        if (string.IsNullOrWhiteSpace(crlPem))
+            throw new ArgumentException("The CRL PEM must not be empty.", paramName);
+
+        return ReadPemObject(crlPem, paramName) switch
+        {
+            X509Crl crl => crl,
+            _ => throw new ArgumentException("The PEM does not contain an X.509 certificate revocation list.", paramName),
+        };
+    }
+
     /// <summary>Reads the descriptive fields (subject/issuer/serial/validity/algorithm/version/thumbprint) from a certificate.</summary>
     internal static CertificateInfo ExtractInfo(X509Certificate certificate) => new()
     {

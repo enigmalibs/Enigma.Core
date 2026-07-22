@@ -28,5 +28,5 @@ records in `docs/done/<ID>.md`. Row order is the work order (append new items la
 | FEATURE-0D6D | Asymmetric.Pqc implementation (ML-DSA, ML-KEM) | DONE | docs/plan/FEATURE-0D6D.md |
 | FEATURE-099B | Certificates implementation (X.509) | IN PROGRESS | docs/plan/FEATURE-099B.md |
 | - PHASE01 | Generation, CSR & issuance (+ restored extension controls & CSR verification) | DONE | (in FEATURE-099B.md) |
-| - PHASE02 | Chain validation & CRL revocation | TODO | (in FEATURE-099B.md) |
+| - PHASE02 | Chain validation & CRL revocation | DONE | (in FEATURE-099B.md) |
 | - PHASE03 | CertificateInfo parsing, PFX & DER (restored) | TODO | (in FEATURE-099B.md) |

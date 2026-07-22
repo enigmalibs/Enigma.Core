@@ -9,6 +9,10 @@
   <ItemGroup>
     <PackageReference Include="xunit.v3" />
     <PackageReference Include="coverlet.collector" PrivateAssets="all" />
+    <!-- Test-only BouncyCastle reference: X.509 CRL generation (X509V2CrlGenerator) has no product API
+         by design, so the revocation tests build signed CRL fixtures with BouncyCastle directly. This
+         reference is confined to the test project and never reaches Enigma.Core's public surface. -->
+    <PackageReference Include="BouncyCastle.Cryptography" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../../src/Enigma.Core/Enigma.Core.csproj" />

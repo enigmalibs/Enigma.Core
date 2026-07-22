@@ -5,8 +5,11 @@ using Enigma.Core.Asymmetric.PublicKey;
 using Org.BouncyCastle.Crypto;
 using Org.BouncyCastle.Crypto.Operators;
 using Org.BouncyCastle.Pkcs;
+using Org.BouncyCastle.Pkix;
 using Org.BouncyCastle.Security;
+using Org.BouncyCastle.Utilities.Collections;
 using Org.BouncyCastle.X509;
+using Org.BouncyCastle.X509.Store;
 
 namespace Enigma.Core.Certificates;
 
@@ -99,10 +102,68 @@ public sealed class X509CertificateService : IX509CertificateService
     }
 
     /// <inheritdoc />
-    public bool ValidateChain(string certificatePem, IReadOnlyList<string> trustedRootPems, IReadOnlyList<string>? intermediatePems = null) => throw new NotImplementedException();
+    public bool ValidateChain(string certificatePem, IReadOnlyList<string> trustedRootPems, IReadOnlyList<string>? intermediatePems = null)
+    {
+        if (trustedRootPems is null) throw new ArgumentNullException(nameof(trustedRootPems));
+
+        var certificate = X509CertUtils.ReadCertificate(certificatePem, nameof(certificatePem));
+
+        // No trusted roots means nothing can serve as an anchor: the chain cannot be trusted.
+        if (trustedRootPems.Count == 0)
+            return false;
+
+        var trustAnchors = new HashSet<TrustAnchor>();
+        foreach (var rootPem in trustedRootPems)
+            trustAnchors.Add(new TrustAnchor(X509CertUtils.ReadCertificate(rootPem, nameof(trustedRootPems)), nameConstraints: null));
+
+        // Candidate certificates the builder may use to assemble the path: the leaf plus any supplied
+        // intermediates. Order is irrelevant — a path *builder* discovers the correct leaf→anchor ordering,
+        // unlike a validator (which only checks an already-ordered path). The anchors are supplied separately.
+        var candidateCertificates = new List<X509Certificate> { certificate };
+        if (intermediatePems is not null)
+            foreach (var intermediatePem in intermediatePems)
+                candidateCertificates.Add(X509CertUtils.ReadCertificate(intermediatePem, nameof(intermediatePems)));
+
+        try
+        {
+            var target = new X509CertStoreSelector { Certificate = certificate };
+            // Revocation is intentionally NOT checked here — that is the separate IsRevoked responsibility.
+            var parameters = new PkixBuilderParameters(trustAnchors, target) { IsRevocationEnabled = false };
+            parameters.AddStoreCert(CollectionUtilities.CreateStore(candidateCertificates));
+            new PkixCertPathBuilder().Build(parameters);
+            return true;
+        }
+        catch (PkixCertPathBuilderException)
+        {
+            // No valid path could be built or validated (untrusted root, missing intermediate, expired /
+            // not-yet-valid, broken signature) — reported as invalid rather than raised.
+            return false;
+        }
+    }
 
     /// <inheritdoc />
-    public bool IsRevoked(string certificatePem, string crlPem, string issuerCertificatePem) => throw new NotImplementedException();
+    public bool IsRevoked(string certificatePem, string crlPem, string issuerCertificatePem)
+    {
+        var certificate = X509CertUtils.ReadCertificate(certificatePem, nameof(certificatePem));
+        var issuerCertificate = X509CertUtils.ReadCertificate(issuerCertificatePem, nameof(issuerCertificatePem));
+        var crl = X509CertUtils.ReadCrl(crlPem, nameof(crlPem));
+
+        try
+        {
+            // Only trust a CRL that is genuinely signed by the named issuer.
+            crl.Verify(issuerCertificate.GetPublicKey());
+        }
+        // A CRL whose signature algorithm implies a different key type than the issuer's (e.g. an Ed25519-signed
+        // CRL against an RSA issuer) surfaces as InvalidCastException inside BouncyCastle's verifier setup — that
+        // is still a verification failure and must not escape as a non-contract exception.
+        catch (Exception ex) when (ex is GeneralSecurityException or CryptoException or InvalidCastException)
+        {
+            throw new CryptographicException(
+                "The CRL signature could not be verified against the issuer certificate.", ex);
+        }
+
+        return crl.GetRevokedCertificate(certificate.SerialNumber) is not null;
+    }
 
     /// <inheritdoc />
     public CertificateInfo GetCertificateInfo(string certificatePem)

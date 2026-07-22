@@ -1,6 +1,6 @@
 # FEATURE-099B — Certificates implementation (X.509)
 
-- **Status:** IN PROGRESS (PHASE01 DONE; PHASE02 next)
+- **Status:** IN PROGRESS (PHASE01 DONE; PHASE02 DONE; PHASE03 next)
 - **Type:** FEATURE (multi-phase — 3 phases)
 - **Depends on:** FEATURE-2E3E (publickey — RSA keygen + PEM); transitively FEATURE-61D1
 - **Suggested branch (at build):** `feature/feature-099b-phaseNN-certificates-x509` (one branch per phase)
@@ -115,6 +115,10 @@ Un-defer `Utils/PemUtils` + `Utils/X509Utils` as internal helpers. Add the amend
 Acceptance: self-signed/CSR/issuance behaviours pass; CA extensions produce validatable anchors; `IsCertificateSigningRequestValid` true/false correct; reflection test green.
 
 ### Phase 2 — Chain validation & CRL revocation
+**Status: DONE** (see `docs/done/FEATURE-099B-PHASE02.md`). `ValidateChain` uses a PKIX **path builder**
+(not a validator) so intermediate ordering is irrelevant — corrected after an adversarial review found the
+validator-based version rejected valid multi-intermediate chains supplied out of leaf→root order.
+
 Implement `ValidateChain` (PKIX path validation over `trustedRootPems` + `intermediatePems`; empty-anchor and `PkixCertPathValidatorException` → `false`) and `IsRevoked` (CRL parse + issuer-signature verification + revoked-serial lookup). Requires Phase 1's CA-capable generation to build the hierarchy. Port `ChainValidationTests` with split trust inputs; obtain signed CRL PEMs from the test-side BouncyCastle CRL helper.
 Acceptance: 3-level chain validates; missing-intermediate / untrusted-root / expired / not-yet-valid / empty-anchor all `false`; `IsRevoked` true for a revoked leaf and false for an unrevoked leaf; `ValidateChain` performs no revocation on its own.
 
