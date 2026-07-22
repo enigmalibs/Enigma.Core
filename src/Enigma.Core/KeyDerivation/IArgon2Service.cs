@@ -19,6 +19,19 @@ public interface IArgon2Service
     /// <param name="variant">The Argon2 variant. Defaults to <see cref="Argon2Variant.Argon2id"/>.</param>
     /// <param name="version">The Argon2 version. Defaults to <see cref="Argon2Version.Version13"/>.</param>
     /// <returns>The derived key, <paramref name="keySizeBytes"/> bytes long.</returns>
+    /// <remarks>
+    /// Tune the cost parameters to your hardware. RFC 9106's second recommended option is
+    /// <paramref name="iterations"/> = 3, <paramref name="memorySizeKb"/> = 65536 (64 MiB) and
+    /// <paramref name="degreeOfParallelism"/> = 4. The <paramref name="password"/> array is used as-is:
+    /// it is neither mutated nor cleared, so the caller owns its lifetime.
+    /// </remarks>
+    /// <exception cref="System.ArgumentNullException">
+    /// <paramref name="password"/> or <paramref name="salt"/> is <see langword="null"/>.
+    /// </exception>
+    /// <exception cref="System.ArgumentException">
+    /// <paramref name="iterations"/>, <paramref name="memorySizeKb"/>,
+    /// <paramref name="degreeOfParallelism"/>, or <paramref name="keySizeBytes"/> is not greater than zero.
+    /// </exception>
     byte[] DeriveKey(
         byte[] password,
         byte[] salt,

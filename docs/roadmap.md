@@ -16,7 +16,7 @@ records in `docs/done/<ID>.md`. Row order is the work order (append new items la
 | FEATURE-61D1 | Implementation foundation (packages, test harness, shared Extensions/Utils) | DONE | docs/plan/FEATURE-61D1.md |
 | FEATURE-0399 | Encoding implementation (Base64, Hex, Base32) | DONE | docs/plan/FEATURE-0399.md |
 | FEATURE-26A5 | Hashing implementation (Hash + HMAC) | DONE | docs/plan/FEATURE-26A5.md |
-| FEATURE-679F | KeyDerivation implementation (PBKDF2 + Argon2) | TODO | docs/plan/FEATURE-679F.md |
+| FEATURE-679F | KeyDerivation implementation (PBKDF2 + Argon2) | DONE | docs/plan/FEATURE-679F.md |
 | FEATURE-5761 | OTP implementation (HOTP, TOTP, provisioning) | TODO | docs/plan/FEATURE-5761.md |
 | - PHASE01 | HOTP/TOTP services + factories (full RFC parity) | TODO | (in FEATURE-5761.md) |
 | - PHASE02 | Provisioning (un-defer OtpProvisioning + OtpAuthParameters as DI service) | TODO | (in FEATURE-5761.md) |
