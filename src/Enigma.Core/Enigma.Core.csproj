@@ -3,9 +3,24 @@
     <OutputType>Library</OutputType>
     <TargetFrameworks>netstandard2.0;net8.0;net10.0</TargetFrameworks>
     <PackageId>Enigma.Core</PackageId>
-    <Version>0.1.0</Version>
+    <Version>1.0.0</Version>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <Title>Enigma.Core — .NET Cryptography Library</Title>
+    <Description>A modern, service- and factory-oriented .NET cryptography library built on BouncyCastle, designed for dependency injection. Provides block ciphers (AES, DES, 3DES, Blowfish, Twofish, Serpent, Camellia, CAST5, IDEA, SEED, ARIA, SM4) with ECB/CBC/CTR/GCM (incl. AAD) modes, stream ciphers (ChaCha20, ChaCha20-RFC7539, Salsa20), RSA (PKCS#1 v1.5 &amp; OAEP encryption, signing, PEM), post-quantum cryptography (ML-DSA and ML-KEM), X.509 certificates (generation, CSR, issuance, chain validation, CRL revocation, PKCS#12/DER import-export), hashing (MD5, SHA-1, SHA-256, SHA-512, SHA-3), HMAC, one-time passwords (HOTP/TOTP with otpauth provisioning), key derivation (PBKDF2, Argon2), padding schemes, and data encoding (Base64, Base32, Hex).</Description>
+    <PackageTags>enigma cryptography bouncycastle aes chacha20 salsa20 rsa pqc ml-dsa ml-kem x509 certificate csr pfx sha hash hmac otp hotp totp base32 pbkdf2 argon2 encryption signing dotnet</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageLicenseFile>LICENSE.md</PackageLicenseFile>
+    <RepositoryUrl>https://github.com/enigmalibs/Enigma.Core</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageProjectUrl>https://github.com/enigmalibs/Enigma.Core</PackageProjectUrl>
+    <PackageReleaseNotes>Initial 1.0.0 release. See RELEASENOTES.md for the full details.</PackageReleaseNotes>
   </PropertyGroup>
+  <!-- Package README and LICENSE files, packed at the nupkg root. Paths are relative to this csproj
+       at src/Enigma.Core/; PackageReadmeFile/PackageLicenseFile above reference them by file name. -->
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+    <None Include="..\..\LICENSE.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
   <!-- BouncyCastle backs every crypto implementation feature; referenced on all TFMs but never
        exposed on the public surface (see the reflection guard test). -->
   <ItemGroup>

@@ -81,7 +81,7 @@ the NuGet API key is never stored or echoed.
 
 ## PHASE01 — Package metadata & build config + license check
 
-**Status:** TODO
+**Status:** DONE
 
 **Goal:** make `src/Enigma.Core/Enigma.Core.csproj` a complete, valid NuGet package definition and
 verify licensing.
