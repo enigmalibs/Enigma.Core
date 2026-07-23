@@ -181,7 +181,7 @@ then the owner re-verifies all snippets against the source before declaring the 
 
 ## PHASE03 — Summary README + release notes + community files
 
-**Status:** TODO
+**Status:** DONE
 
 **Goal:** the summary-style `README.md`, initial `RELEASENOTES.md`, finalized `<PackageReleaseNotes>`,
 `SECURITY.md`, and `CLAUDE.md`.

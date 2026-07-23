@@ -13,7 +13,7 @@
     <RepositoryUrl>https://github.com/enigmalibs/Enigma.Core</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageProjectUrl>https://github.com/enigmalibs/Enigma.Core</PackageProjectUrl>
-    <PackageReleaseNotes>Initial 1.0.0 release. See RELEASENOTES.md for the full details.</PackageReleaseNotes>
+    <PackageReleaseNotes>First public release of Enigma.Core: a DI-friendly, BouncyCastle-backed cryptography surface covering block &amp; stream ciphers (ECB/CBC/CTR/GCM), RSA, post-quantum ML-DSA/ML-KEM, X.509 certificates, hashing, HMAC, OTP (HOTP/TOTP), key derivation (PBKDF2/Argon2), padding, and data encoding. Targets netstandard2.0/net8.0/net10.0. See RELEASENOTES.md for the full details.</PackageReleaseNotes>
   </PropertyGroup>
   <!-- Package README and LICENSE files, packed at the nupkg root. Paths are relative to this csproj
        at src/Enigma.Core/; PackageReadmeFile/PackageLicenseFile above reference them by file name. -->

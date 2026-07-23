@@ -33,5 +33,5 @@ records in `docs/done/<ID>.md`. Row order is the work order (append new items la
 | FEATURE-4620 | NuGet release preparation (v1.0.0) | IN PROGRESS | docs/plan/FEATURE-4620.md |
 | - PHASE01 | Package metadata & build config + license check | DONE | (in FEATURE-4620.md) |
 | - PHASE02 | Per-category documentation & samples | DONE | (in FEATURE-4620.md) |
-| - PHASE03 | Summary README + release notes + community files | TODO | (in FEATURE-4620.md) |
+| - PHASE03 | Summary README + release notes + community files | DONE | (in FEATURE-4620.md) |
 | - PHASE04 | Release runbook & final cut prep | TODO | (in FEATURE-4620.md) |
