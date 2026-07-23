@@ -1,6 +1,6 @@
 # FEATURE-099B — Certificates implementation (X.509)
 
-- **Status:** IN PROGRESS (PHASE01 DONE; PHASE02 DONE; PHASE03 next)
+- **Status:** DONE (PHASE01 DONE; PHASE02 DONE; PHASE03 DONE)
 - **Type:** FEATURE (multi-phase — 3 phases)
 - **Depends on:** FEATURE-2E3E (publickey — RSA keygen + PEM); transitively FEATURE-61D1
 - **Suggested branch (at build):** `feature/feature-099b-phaseNN-certificates-x509` (one branch per phase)
@@ -123,6 +123,12 @@ Implement `ValidateChain` (PKIX path validation over `trustedRootPems` + `interm
 Acceptance: 3-level chain validates; missing-intermediate / untrusted-root / expired / not-yet-valid / empty-anchor all `false`; `IsRevoked` true for a revoked leaf and false for an unrevoked leaf; `ValidateChain` performs no revocation on its own.
 
 ### Phase 3 — CertificateInfo parsing, PFX & DER (restored)
+**Status: DONE** (see `docs/done/FEATURE-099B-PHASE03.md`). Implemented directly (not stub-first, since the whole
+phase lands in one commit); `ExtractInfo` gained CA/KeyUsage/SAN read-back, plus `ExportPkcs12`/`ImportPkcs12` and
+`ExportCertificateToDer`/`ImportCertificateFromDer`. An adversarial re-review found & fixed one medium contract issue
+(`ImportPkcs12` leaked a raw BouncyCastle `ArgumentException` on valid-DER-but-non-PFX input) plus two test-coverage
+gaps, each locked with a regression test.
+
 Add remaining amendments as throwing stubs first: `CertificateInfo`'s `IsCertificateAuthority` / `KeyUsage` / `SubjectAlternativeNames`, `ExportPkcs12` / `ImportPkcs12`, `ExportCertificateToDer` / `ImportCertificateFromDer`. Implement `GetCertificateInfo` (`System.Numerics.BigInteger` serial, `DateTimeOffset` dates, uppercase-hex SHA-256 `Thumbprint`, read-back `SignatureAlgorithm`, restored CA/KeyUsage/SAN read-back), PFX round-trip, and DER load/save. Port `CertificateInfoTests`, the full `CertificateFormatTests` (PEM + DER), and `PfxTests`; add the Thumbprint KAT.
 Acceptance: `GetCertificateInfo` returns all fields correctly incl. restored extensions and a digest-verified `Thumbprint`; PFX round-trips (wrong password → `CryptographicException`); DER round-trip and PEM/DER equivalence hold.
 

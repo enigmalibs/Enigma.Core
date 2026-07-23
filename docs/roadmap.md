@@ -26,7 +26,7 @@ records in `docs/done/<ID>.md`. Row order is the work order (append new items la
 | - PHASE03 | StreamCiphers | DONE | (in FEATURE-534F.md) |
 | FEATURE-2E3E | Asymmetric.PublicKey implementation (RSA) | DONE | docs/plan/FEATURE-2E3E.md |
 | FEATURE-0D6D | Asymmetric.Pqc implementation (ML-DSA, ML-KEM) | DONE | docs/plan/FEATURE-0D6D.md |
-| FEATURE-099B | Certificates implementation (X.509) | IN PROGRESS | docs/plan/FEATURE-099B.md |
+| FEATURE-099B | Certificates implementation (X.509) | DONE | docs/plan/FEATURE-099B.md |
 | - PHASE01 | Generation, CSR & issuance (+ restored extension controls & CSR verification) | DONE | (in FEATURE-099B.md) |
 | - PHASE02 | Chain validation & CRL revocation | DONE | (in FEATURE-099B.md) |
-| - PHASE03 | CertificateInfo parsing, PFX & DER (restored) | TODO | (in FEATURE-099B.md) |
+| - PHASE03 | CertificateInfo parsing, PFX & DER (restored) | DONE | (in FEATURE-099B.md) |

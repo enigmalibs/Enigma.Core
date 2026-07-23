@@ -173,6 +173,40 @@ public sealed class X509CertificateService : IX509CertificateService
         return X509CertUtils.ExtractInfo(certificate);
     }
 
+    /// <inheritdoc />
+    public byte[] ExportPkcs12(string certificatePem, string privateKeyPem, char[] password, IReadOnlyList<string>? chainPems = null)
+    {
+        if (password is null) throw new ArgumentNullException(nameof(password));
+
+        var certificate = X509CertUtils.ReadCertificate(certificatePem, nameof(certificatePem));
+        // The input private-key PEM is expected unencrypted; the sole password protects the produced archive.
+        var privateKey = PemUtils.ParsePrivateKey(privateKeyPem, password: null);
+
+        var chain = new List<X509Certificate>();
+        if (chainPems is not null)
+            foreach (var chainPem in chainPems)
+                chain.Add(X509CertUtils.ReadCertificate(chainPem, nameof(chainPems)));
+
+        return X509CertUtils.ExportPkcs12(certificate, privateKey, password, chain, _random);
+    }
+
+    /// <inheritdoc />
+    public (string certificatePem, string privateKeyPem) ImportPkcs12(byte[] pkcs12, char[] password)
+    {
+        if (password is null) throw new ArgumentNullException(nameof(password));
+
+        var (certificate, privateKey) = X509CertUtils.ImportPkcs12(pkcs12, password, nameof(pkcs12));
+        return (X509CertUtils.WritePem(certificate), PemUtils.WritePrivateKeyPem(privateKey, password: null));
+    }
+
+    /// <inheritdoc />
+    public byte[] ExportCertificateToDer(string certificatePem)
+        => X509CertUtils.ToDer(X509CertUtils.ReadCertificate(certificatePem, nameof(certificatePem)));
+
+    /// <inheritdoc />
+    public string ImportCertificateFromDer(byte[] derEncodedCertificate)
+        => X509CertUtils.WritePem(X509CertUtils.ReadCertificateFromDer(derEncodedCertificate, nameof(derEncodedCertificate)));
+
     // Signs the assembled certificate, wrapping a BouncyCastle signing failure as CryptographicException.
     private X509Certificate Sign(X509V3CertificateGenerator generator, RsaSignatureAlgorithm algorithm, AsymmetricKeyParameter signingKey)
     {
