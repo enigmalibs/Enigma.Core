@@ -47,6 +47,29 @@ before declaring DONE — each locked in with a regression test:
    **Fix / new test:** `ValidateChain_ImposterRootSameDnDifferentKey_Fails` — an anchor sharing the real root's
    subject DN (`CN=Root CA`) but built with a different key is correctly rejected.
 
+## Follow-up re-review (2026-07-23)
+The original adversarial review above was interrupted before it fully swept the `IsRevoked` verification surface. A
+second, independent multi-lens re-review (5 dimensions, every finding refute-verified; 1 confirmed of 8 raw) found
+**one further real defect — a sibling of issue 2 above — fixed here, empirically reproduced end-to-end first:**
+
+4. **`IsRevoked` leaked `SecurityUtilityException` for an unrecognised signature-algorithm OID (contract / principle 1).**
+   A CRL whose signature `AlgorithmIdentifier` carries an OID no signer recognises still parses via `ReadCrl`, but
+   `crl.Verify` then reaches `SignerUtilities.InitSigner`, which throws `Org.BouncyCastle.Security.SecurityUtilityException`
+   ("Signing mechanism … not recognised."). That type derives directly from `System.Exception` — not from
+   `GeneralSecurityException`/`CryptoException`/`InvalidCastException` — so it escaped the catch filter as a raw
+   BouncyCastle type, contradicting this doc's own "no BouncyCastle type escapes" claim. This is distinct from the
+   Ed25519 case (issue 2): a recognised-but-wrong-key mechanism fails later at the key cast, whereas an entirely
+   unknown OID fails earlier at mechanism lookup. **Fix:** added `SecurityUtilityException` to the catch filter (still
+   scoped to only `crl.Verify`). **Regression test:** `IsRevoked_CrlWithUnknownSignatureAlgorithm_ThrowsCryptographicException`,
+   backed by a new `TestCrlBuilder.CreateCrlWithUnknownSignatureAlgorithm` (DER-rewrites a valid CRL's inner+outer
+   signature-algorithm OID to `1.2.3.4.5.6.7.8.9`). Confirmed the test fails against the pre-fix code (raw
+   `SecurityUtilityException` at `X509CertificateService.cs:154`) and passes after the fix.
+
+The other 7 raw findings were refuted on verification as documented design decisions (serial-only revocation lookup,
+no CRL-freshness/`cRLSign` check, fail-closed `CryptographicException` on unverifiable CRLs), XML-doc-completeness
+nits, a hypothetical-refactor test-coverage concern, and working-tree noise (probe files left by the review agents
+themselves, never part of any commit).
+
 ## Deviations & follow-ups
 - **Path builder vs. validator (deviation from the literal port).** The v5.0.0 source used
   `PkixCertPathValidator` over a pre-ordered list; this phase deliberately uses `PkixCertPathBuilder` instead,
@@ -64,7 +87,9 @@ before declaring DONE — each locked in with a regression test:
 - `X509CertificateService.cs` — implemented `ValidateChain` (PKIX path **builder**, explicit anchors + optional
   intermediates, no revocation, empty-anchor/`PkixCertPathBuilderException` → `false`) and `IsRevoked` (CRL parse
   + issuer-signature verify + revoked-serial lookup; verify failures → `CryptographicException`). Added the
-  `Org.BouncyCastle.Pkix` / `Utilities.Collections` / `X509.Store` usings.
+  `Org.BouncyCastle.Pkix` / `Utilities.Collections` / `X509.Store` usings. The `IsRevoked` verify catch filter
+  covers `GeneralSecurityException`/`CryptoException`/`InvalidCastException`/**`SecurityUtilityException`** (the last
+  added by the 2026-07-23 follow-up re-review, issue 4).
 - `X509CertUtils.cs` — added internal `ReadCrl(crlPem, paramName)` (PEM → `X509Crl`, malformed → `ArgumentException`).
 
 ### Modified — tests (`tests/Enigma.Core.UnitTests/`)
@@ -74,23 +99,28 @@ before declaring DONE — each locked in with a regression test:
 
 ### Added — tests (`tests/Enigma.Core.UnitTests/Certificates/`)
 - `TestCrlBuilder.cs` — test-only CRL fixture builder (`X509V2CrlGenerator` + `Asn1SignatureFactory`); RSA-signed
-  `CreateCrl` and the mismatched-key-type `CreateEd25519SignedCrl`.
+  `CreateCrl`, the mismatched-key-type `CreateEd25519SignedCrl`, and (follow-up re-review) the unknown-signature-OID
+  `CreateCrlWithUnknownSignatureAlgorithm` (DER-rewrites the inner+outer signature-algorithm identifier).
 - `ChainValidationTests.cs` — full chain, order-independent two-intermediate, imposter-root (same DN / different
   key), missing-intermediate, self-signed-against-itself, untrusted-root, expired, not-yet-valid, empty-anchor,
   null-anchor, malformed-leaf.
 - `RevocationTests.cs` — revoked-true, unrevoked-false (empty CRL and CRL revoking others), wrong-issuer CRL →
-  throws, mismatched-key-type CRL → throws, malformed CRL → throws, and `ValidateChain` performs no revocation.
+  throws, mismatched-key-type CRL → throws, **unknown-signature-OID CRL → throws** (follow-up re-review), malformed
+  CRL → throws, and `ValidateChain` performs no revocation.
 
 ## Build / test evidence
 - **Build:** `dotnet build -c Debug` and `-c Release` both **0 warnings / 0 errors** across `netstandard2.0`,
   `net8.0`, `net10.0` (`TreatWarningsAsErrors` + `GenerateDocumentationFile`).
-- **Tests:** full suite green on both TFMs — **3198 passed, 0 failed, 0 skipped** (net8.0 + net10.0). The
-  Certificates namespace now has **53 tests** (35 from PHASE01 + 18 from PHASE02, incl. the 3 review-driven
-  regression tests).
+- **Tests:** full suite green on both TFMs — **3200 passed, 0 failed, 0 skipped** (net8.0 + net10.0). The
+  Certificates namespace now has **19 PHASE02 test methods** (11 `ChainValidationTests` + 8 `RevocationTests`),
+  incl. the 3 original review-driven regressions and the 2026-07-23 follow-up regression
+  (`IsRevoked_CrlWithUnknownSignatureAlgorithm_ThrowsCryptographicException`). (The initial commit was 3198;
+  the follow-up fix added one test → +1 per TFM → 3200.)
 
 ## Acceptance criteria (Phase 2)
 - 3-level chain validates; missing-intermediate / untrusted-root / expired / not-yet-valid / empty-anchor all
   `false`. ✅ (plus order-independent multi-intermediate and imposter-root, added by review)
 - `IsRevoked` true for a revoked leaf, false for an unrevoked leaf; `ValidateChain` performs no revocation on its
   own. ✅
-- No `Org.BouncyCastle.*` type or exception escapes any member (incl. the CRL key-type-mismatch path). ✅
+- No `Org.BouncyCastle.*` type or exception escapes any member (incl. the CRL key-type-mismatch path **and the
+  unrecognised-signature-OID path fixed by the 2026-07-23 follow-up re-review**). ✅

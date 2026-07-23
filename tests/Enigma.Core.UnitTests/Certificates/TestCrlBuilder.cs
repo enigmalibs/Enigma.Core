@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using Org.BouncyCastle.Asn1;
 using Org.BouncyCastle.Asn1.X509;
 using Org.BouncyCastle.Crypto;
 using Org.BouncyCastle.Crypto.Generators;
@@ -70,6 +71,39 @@ internal static class TestCrlBuilder
 
         var crl = generator.Generate(new Asn1SignatureFactory("Ed25519", edKeyPair.Private));
         return WritePem(crl);
+    }
+
+    /// <summary>
+    /// Builds a CRL RSA-signed by <paramref name="issuerCertificatePem"/> / <paramref name="issuerPrivateKeyPem"/>,
+    /// then rewrites its signature-algorithm identifier (both the inner <c>tbsCertList.signature</c> and the outer
+    /// <c>signatureAlgorithm</c>) to an <b>unrecognised OID</b>. The result still parses into an <see cref="X509Crl"/>,
+    /// but no verifier can be constructed for it, so verifying it raises BouncyCastle's
+    /// <c>SecurityUtilityException</c> ("Signing mechanism … not recognised."). Used to prove that
+    /// <c>IsRevoked</c> surfaces that as <see cref="System.Security.Cryptography.CryptographicException"/> rather
+    /// than leaking the raw BouncyCastle type.
+    /// </summary>
+    internal static string CreateCrlWithUnknownSignatureAlgorithm(string issuerCertificatePem, string issuerPrivateKeyPem, params string[] revokedCertificatePems)
+    {
+        var validCrl = ReadCrl(CreateCrl(issuerCertificatePem, issuerPrivateKeyPem, revokedCertificatePems));
+
+        // OID 1.2.3.4.5.6.7.8.9 maps to no known signing mechanism.
+        var unknownAlgorithm = new AlgorithmIdentifier(new DerObjectIdentifier("1.2.3.4.5.6.7.8.9")).ToAsn1Object();
+        var certificateList = (Asn1Sequence)Asn1Object.FromByteArray(validCrl.GetEncoded());
+
+        // A v2 CRL's TBSCertList is [0]=version, [1]=signature AlgorithmIdentifier, … — replace element 1.
+        var tbsItems = ((Asn1Sequence)certificateList[0]).ToArray();
+        tbsItems[1] = unknownAlgorithm;
+        var outerItems = certificateList.ToArray();
+        outerItems[0] = new DerSequence(tbsItems);
+        outerItems[1] = unknownAlgorithm;
+
+        return WritePem(new X509Crl(CertificateList.GetInstance(new DerSequence(outerItems))));
+    }
+
+    private static X509Crl ReadCrl(string pem)
+    {
+        using var reader = new StringReader(pem);
+        return (X509Crl)new PemReader(reader).ReadObject();
     }
 
     private static X509Certificate ReadCertificate(string pem)

@@ -85,6 +85,17 @@ public class RevocationTests(CertificateKeyFixture keys)
     }
 
     [Fact]
+    public void IsRevoked_CrlWithUnknownSignatureAlgorithm_ThrowsCryptographicException()
+    {
+        var (rootPem, leafPem) = RootAndLeaf();
+        // A CRL that parses cleanly but whose signature-algorithm OID no verifier recognises must surface as a
+        // CryptographicException, never a raw BouncyCastle SecurityUtilityException ("Signing mechanism … not recognised.").
+        var crlPem = TestCrlBuilder.CreateCrlWithUnknownSignatureAlgorithm(rootPem, keys.RootPrivateKeyPem, leafPem);
+
+        Assert.Throws<CryptographicException>(() => keys.NewService().IsRevoked(leafPem, crlPem, rootPem));
+    }
+
+    [Fact]
     public void IsRevoked_MalformedCrlPem_Throws()
     {
         var (rootPem, leafPem) = RootAndLeaf();

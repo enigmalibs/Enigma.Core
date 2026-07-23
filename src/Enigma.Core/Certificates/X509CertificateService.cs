@@ -153,10 +153,11 @@ public sealed class X509CertificateService : IX509CertificateService
             // Only trust a CRL that is genuinely signed by the named issuer.
             crl.Verify(issuerCertificate.GetPublicKey());
         }
-        // A CRL whose signature algorithm implies a different key type than the issuer's (e.g. an Ed25519-signed
-        // CRL against an RSA issuer) surfaces as InvalidCastException inside BouncyCastle's verifier setup — that
-        // is still a verification failure and must not escape as a non-contract exception.
-        catch (Exception ex) when (ex is GeneralSecurityException or CryptoException or InvalidCastException)
+        // Any failure to construct or run the CRL's signature verifier is treated as an unverifiable CRL. Besides
+        // GeneralSecurityException/CryptoException, BouncyCastle's verifier setup surfaces a key-type mismatch (e.g.
+        // an Ed25519-signed CRL against an RSA issuer) as InvalidCastException, and an unrecognised signature-algorithm
+        // OID as SecurityUtilityException; none of these may escape as a non-contract exception.
+        catch (Exception ex) when (ex is GeneralSecurityException or CryptoException or InvalidCastException or SecurityUtilityException)
         {
             throw new CryptographicException(
                 "The CRL signature could not be verified against the issuer certificate.", ex);
