@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Numerics;
 
 namespace Enigma.Core.Certificates;
@@ -35,4 +36,22 @@ public sealed record CertificateInfo
 
     /// <summary>The certificate thumbprint (fingerprint), as an uppercase hexadecimal string.</summary>
     public required string Thumbprint { get; init; }
+
+    /// <summary>
+    /// Whether the certificate is a certificate authority, read from the <c>BasicConstraints</c> extension
+    /// (<see langword="true"/> when the extension is present with <c>cA</c> set; otherwise <see langword="false"/>).
+    /// </summary>
+    public required bool IsCertificateAuthority { get; init; }
+
+    /// <summary>
+    /// The permitted key usages read from the <c>KeyUsage</c> extension, or <see langword="null"/> when the
+    /// certificate carries no <c>KeyUsage</c> extension.
+    /// </summary>
+    public X509KeyUsage? KeyUsage { get; init; }
+
+    /// <summary>
+    /// The subject alternative names read from the <c>SubjectAlternativeName</c> extension. Empty when the
+    /// extension is absent (or is present but cannot be parsed).
+    /// </summary>
+    public IReadOnlyList<string> SubjectAlternativeNames { get; init; } = [];
 }

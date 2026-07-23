@@ -1,16 +1,13 @@
-using System;
-
 namespace Enigma.Core.KeyDerivation;
 
 /// <summary>
-/// A factory for creating Argon2 key-derivation services.
+/// Default <see cref="IArgon2ServiceFactory"/> implementation. Hands back a stateless
+/// <see cref="Argon2Service"/>; the variant, version and cost parameters are supplied per call on the
+/// returned service.
 /// </summary>
-/// <remarks>
-/// Skeleton stub: members are not yet implemented and throw <see cref="NotImplementedException"/>.
-/// The concrete factory logic arrives with the key-derivation implementation feature.
-/// </remarks>
 public sealed class Argon2ServiceFactory : IArgon2ServiceFactory
 {
     /// <inheritdoc />
-    public IArgon2Service CreateArgon2Service() => throw new NotImplementedException();
+    public IArgon2Service CreateArgon2Service()
+        => new Argon2Service();
 }

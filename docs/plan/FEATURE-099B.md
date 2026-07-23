@@ -1,6 +1,6 @@
 # FEATURE-099B — Certificates implementation (X.509)
 
-- **Status:** TODO
+- **Status:** DONE (PHASE01 DONE; PHASE02 DONE; PHASE03 DONE)
 - **Type:** FEATURE (multi-phase — 3 phases)
 - **Depends on:** FEATURE-2E3E (publickey — RSA keygen + PEM); transitively FEATURE-61D1
 - **Suggested branch (at build):** `feature/feature-099b-phaseNN-certificates-x509` (one branch per phase)
@@ -107,14 +107,28 @@ No RFC/NIST/FIPS KAT vectors or CSV resources exist for X.509 — all old tests 
 
 ## Phases
 ### Phase 1 — Generation, CSR & issuance (+ restored extension controls & CSR verification)
+**Status: DONE** (see `docs/done/FEATURE-099B-PHASE01.md`). Read-back decision: `GetCertificateInfo`'s
+core fields were implemented in this phase (user-approved 2026-07-22) so generation could be asserted through
+the public PEM API; the restored `CertificateInfo` extension fields, PFX and DER remain in Phase 3.
+
 Un-defer `Utils/PemUtils` + `Utils/X509Utils` as internal helpers. Add the amendments as throwing stubs first: `X509KeyUsage` enum, `X509CertificateOptions` record, the trailing `options` param on `GenerateSelfSignedCertificate` / `IssueCertificate`, and `IsCertificateSigningRequestValid`. Then implement `GenerateSelfSignedCertificate`, `GenerateCertificateSigningRequest`, `IssueCertificate` and the parameterless factory, with the internal `RsaSignatureAlgorithm`→JCA mapping, `char[]?` password PEM decryption, extension emission (CA `BasicConstraints` / `KeyUsage` / SAN), and internal CSR verification. This phase gates CA-capable certs needed by Phase 2. Port `SelfSignedCertificateTests`, `CsrTests`, `IssueCertificateTests`, the no-BouncyCastle-leak reflection test, and encrypted-PEM tests.
 Acceptance: self-signed/CSR/issuance behaviours pass; CA extensions produce validatable anchors; `IsCertificateSigningRequestValid` true/false correct; reflection test green.
 
 ### Phase 2 — Chain validation & CRL revocation
+**Status: DONE** (see `docs/done/FEATURE-099B-PHASE02.md`). `ValidateChain` uses a PKIX **path builder**
+(not a validator) so intermediate ordering is irrelevant — corrected after an adversarial review found the
+validator-based version rejected valid multi-intermediate chains supplied out of leaf→root order.
+
 Implement `ValidateChain` (PKIX path validation over `trustedRootPems` + `intermediatePems`; empty-anchor and `PkixCertPathValidatorException` → `false`) and `IsRevoked` (CRL parse + issuer-signature verification + revoked-serial lookup). Requires Phase 1's CA-capable generation to build the hierarchy. Port `ChainValidationTests` with split trust inputs; obtain signed CRL PEMs from the test-side BouncyCastle CRL helper.
 Acceptance: 3-level chain validates; missing-intermediate / untrusted-root / expired / not-yet-valid / empty-anchor all `false`; `IsRevoked` true for a revoked leaf and false for an unrevoked leaf; `ValidateChain` performs no revocation on its own.
 
 ### Phase 3 — CertificateInfo parsing, PFX & DER (restored)
+**Status: DONE** (see `docs/done/FEATURE-099B-PHASE03.md`). Implemented directly (not stub-first, since the whole
+phase lands in one commit); `ExtractInfo` gained CA/KeyUsage/SAN read-back, plus `ExportPkcs12`/`ImportPkcs12` and
+`ExportCertificateToDer`/`ImportCertificateFromDer`. An adversarial re-review found & fixed one medium contract issue
+(`ImportPkcs12` leaked a raw BouncyCastle `ArgumentException` on valid-DER-but-non-PFX input) plus two test-coverage
+gaps, each locked with a regression test.
+
 Add remaining amendments as throwing stubs first: `CertificateInfo`'s `IsCertificateAuthority` / `KeyUsage` / `SubjectAlternativeNames`, `ExportPkcs12` / `ImportPkcs12`, `ExportCertificateToDer` / `ImportCertificateFromDer`. Implement `GetCertificateInfo` (`System.Numerics.BigInteger` serial, `DateTimeOffset` dates, uppercase-hex SHA-256 `Thumbprint`, read-back `SignatureAlgorithm`, restored CA/KeyUsage/SAN read-back), PFX round-trip, and DER load/save. Port `CertificateInfoTests`, the full `CertificateFormatTests` (PEM + DER), and `PfxTests`; add the Thumbprint KAT.
 Acceptance: `GetCertificateInfo` returns all fields correctly incl. restored extensions and a digest-verified `Thumbprint`; PFX round-trips (wrong password → `CryptographicException`); DER round-trip and PEM/DER equivalence hold.
 

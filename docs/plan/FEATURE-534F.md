@@ -1,6 +1,6 @@
 # FEATURE-534F — Symmetric implementation (Block + Stream ciphers) + Padding
 
-- **Status:** TODO
+- **Status:** DONE (all phases complete)
 - **Type:** FEATURE (multi-phase — 3 phases)
 - **Depends on:** FEATURE-61D1 (foundation — stream Extensions + package ref + harness)
 - **Suggested branch (at build):** `feature/feature-534f-phaseNN-symmetric` (one branch per phase)
@@ -123,16 +123,19 @@ No other feature is required; symmetric (FEATURE-534F) has no dependency on enco
 
 ## Phases
 ### Phase A — Padding
+- **Status:** DONE (see docs/done/FEATURE-534F-PHASE01.md)
 - **Scope:** Implement the Padding module first (it is the dependency of the block-cipher padded path). Re-introduce the internal `PaddingScheme` → BC-padding seam (`Pkcs7Padding`/`ISO7816d4Padding`/`ISO10126d2Padding`/`X923Padding`); implement `PaddingService` (internal ctor taking `PaddingScheme`), `NoPaddingService`, `PaddingServiceFactory`; supply an internal `SecureRandom`/RNG for ISO10126/X923; preserve Pad/Unpad validation (block size 1..255, padded-length checks).
 - **Members/tests:** `IPaddingService`, `PaddingService`, `NoPaddingService`, `IPaddingServiceFactory`, `PaddingServiceFactory`; PKCS#7 / ISO 7816-4 / X9.23 KAT + ISO 10126-2 round-trip; padding progress/cancellation where applicable.
 - **Acceptance:** padding KAT vectors pass; ISO10126 round-trip passes; no BC type in the public padding surface.
 
 ### Phase B — BlockCiphers (12 algorithms, 4 modes incl. GCM + AAD)
+- **Status:** DONE (see docs/done/FEATURE-534F-PHASE02.md)
 - **Scope:** Re-introduce internal engine factory (`AesEngine`..`SM4Engine`), internal mode wiring (`EcbBlockCipher`/`CbcBlockCipher`/`SicBlockCipher`/`GcmBlockCipher` + `BufferedBlockCipher`/`PaddedBufferedBlockCipher`/`BufferedAeadBlockCipher`), and internal parameters factory (`KeyParameter`/`ParametersWithIV`/`AeadParameters`, **including AAD**). Implement `BlockCipherService` (CipherStream + ArrayPool streaming) and `BlockCipherServiceFactory` (12 `Create<Algo>Service`). Enforce mode/algorithm compatibility (GCM/CTR 128-bit only), IV validation, `GcmMacSize` validation, wrap GCM auth failure in `CryptographicException`. **Restored member:** implement the `byte[]? associatedData` AAD path (added as a throwing stub at the start of this phase, then implemented).
 - **Members/tests:** `IBlockCipherService` (+ AAD amendment), `BlockCipherService`, `IBlockCipherServiceFactory`, `BlockCipherServiceFactory`, `GcmMacSize`; AES/DES/3DES/Blowfish CBC+ECB+CTR KAT (`PaddingScheme.None`), AES-GCM KAT + tamper test, **GCM+AAD round-trip + AAD-mismatch test**, GCM/CTR-on-64-bit-block rejection, padding-ignored-on-Ctr/Gcm, Pkcs7 non-block-aligned round-trip, null/short IV validation, `AdditionalEngineTests` (8 remaining engines), progress/cancellation, and the no-BouncyCastle-in-public-API reflection guard.
 - **Acceptance:** all block KAT pass; Ctr reproduces old SIC vectors; 12-algorithm round-trips pass; AAD round-trip passes; tamper/AAD-mismatch throw `CryptographicException`; 64-bit-block GCM/CTR rejected; reflection guard passes.
 
 ### Phase C — StreamCiphers
+- **Status:** DONE (see docs/done/FEATURE-534F-PHASE03.md)
 - **Scope:** Implement `StreamCipherService` (internal `BufferedStreamCipher` + `ParametersWithIV` wiring) and `StreamCipherServiceFactory` (`ChaCha7539Engine`/`ChaChaEngine`/`Salsa20Engine`). Public shape already matches.
 - **Members/tests:** `IStreamCipherService`, `StreamCipherService`, `IStreamCipherServiceFactory`, `StreamCipherServiceFactory`; ChaCha20 / ChaCha20-RFC7539 / Salsa20 KAT.
 - **Acceptance:** all stream KAT vectors pass; no BC type in the public stream surface.

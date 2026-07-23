@@ -1,6 +1,6 @@
 # FEATURE-679F — KeyDerivation implementation (PBKDF2 + Argon2)
 
-- **Status:** TODO
+- **Status:** DONE
 - **Type:** FEATURE (single-phase)
 - **Depends on:** FEATURE-26A5 (hashing — PRF/HMAC alignment + shared harness); transitively FEATURE-61D1
 - **Suggested branch (at build):** `feature/feature-679f-keyderivation`

@@ -1,6 +1,6 @@
 # FEATURE-61D1 — Implementation foundation (packages, test harness, shared Extensions/Utils)
 
-- **Status:** TODO
+- **Status:** DONE
 - **Type:** FEATURE (single-phase)
 - **Depends on:** FEATURE-4442 (abstraction skeleton — DONE); first implementation feature
 - **Suggested branch (at build):** `feature/feature-61d1-foundation`

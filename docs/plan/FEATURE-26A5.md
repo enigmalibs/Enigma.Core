@@ -1,6 +1,6 @@
 # FEATURE-26A5 — Hashing implementation (Hash + HMAC)
 
-- **Status:** TODO
+- **Status:** DONE
 - **Type:** FEATURE (single-phase)
 - **Depends on:** FEATURE-61D1 (foundation — stream Extensions + package ref + harness)
 - **Suggested branch (at build):** `feature/feature-26a5-hashing`

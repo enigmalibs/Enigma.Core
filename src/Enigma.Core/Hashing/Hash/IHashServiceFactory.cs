@@ -31,8 +31,14 @@ public interface IHashServiceFactory
     /// <returns>A configured hash service.</returns>
     IHashService CreateSha512Service(int bufferSize = CryptoDefaults.StreamBufferSize);
 
-    /// <summary>Creates a hash service for the SHA-3 (256-bit) algorithm.</summary>
+    /// <summary>Creates a hash service for the SHA-3 algorithm at the requested output size.</summary>
+    /// <param name="bitLength">
+    /// The digest output size, in bits. One of 224, 256, 384 or 512. Defaults to 256.
+    /// </param>
     /// <param name="bufferSize">Size of the internal processing buffer, in bytes. Defaults to 4096.</param>
-    /// <returns>A configured hash service.</returns>
-    IHashService CreateSha3Service(int bufferSize = CryptoDefaults.StreamBufferSize);
+    /// <returns>A configured hash service producing a <paramref name="bitLength"/>/8-byte digest.</returns>
+    /// <exception cref="System.ArgumentException">
+    /// <paramref name="bitLength"/> is not one of 224, 256, 384 or 512.
+    /// </exception>
+    IHashService CreateSha3Service(int bitLength = 256, int bufferSize = CryptoDefaults.StreamBufferSize);
 }

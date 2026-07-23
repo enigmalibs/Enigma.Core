@@ -1,22 +1,23 @@
-using System;
+using Org.BouncyCastle.Crypto.Digests;
 
 namespace Enigma.Core.Hashing.Hmac;
 
 /// <summary>
-/// A factory for creating HMAC services, one per supported algorithm.
+/// Default <see cref="IHmacServiceFactory"/> implementation. Selects the underlying digest that backs
+/// the HMAC construction and hands a configured <see cref="HmacService"/> back as an
+/// <see cref="IHmacService"/>. The secret key is supplied per call on the returned service.
 /// </summary>
-/// <remarks>
-/// Skeleton stub: members are not yet implemented and throw <see cref="NotImplementedException"/>.
-/// The concrete factory logic arrives with the hashing implementation feature.
-/// </remarks>
 public sealed class HmacServiceFactory : IHmacServiceFactory
 {
     /// <inheritdoc />
-    public IHmacService CreateHmacSha1Service(int bufferSize = CryptoDefaults.StreamBufferSize) => throw new NotImplementedException();
+    public IHmacService CreateHmacSha1Service(int bufferSize = CryptoDefaults.StreamBufferSize)
+        => new HmacService(() => new Sha1Digest(), bufferSize);
 
     /// <inheritdoc />
-    public IHmacService CreateHmacSha256Service(int bufferSize = CryptoDefaults.StreamBufferSize) => throw new NotImplementedException();
+    public IHmacService CreateHmacSha256Service(int bufferSize = CryptoDefaults.StreamBufferSize)
+        => new HmacService(() => new Sha256Digest(), bufferSize);
 
     /// <inheritdoc />
-    public IHmacService CreateHmacSha512Service(int bufferSize = CryptoDefaults.StreamBufferSize) => throw new NotImplementedException();
+    public IHmacService CreateHmacSha512Service(int bufferSize = CryptoDefaults.StreamBufferSize)
+        => new HmacService(() => new Sha512Digest(), bufferSize);
 }

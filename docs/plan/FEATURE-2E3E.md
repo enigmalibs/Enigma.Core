@@ -1,6 +1,6 @@
 # FEATURE-2E3E — Asymmetric.PublicKey implementation (RSA)
 
-- **Status:** TODO
+- **Status:** DONE
 - **Type:** FEATURE (single-phase)
 - **Depends on:** FEATURE-61D1 (foundation — package ref + harness; PemUtils un-deferred here)
 - **Suggested branch (at build):** `feature/feature-2e3e-publickey-rsa`

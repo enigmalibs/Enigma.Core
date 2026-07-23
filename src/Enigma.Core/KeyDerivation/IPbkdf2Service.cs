@@ -20,6 +20,18 @@ public interface IPbkdf2Service
     /// The pseudorandom function backing the derivation. Defaults to <see cref="Pbkdf2Prf.HmacSha256"/>.
     /// </param>
     /// <returns>The derived key, <paramref name="keySizeBytes"/> bytes long.</returns>
+    /// <remarks>
+    /// Choose <paramref name="iterations"/> as high as your latency budget allows. As a floor, OWASP
+    /// recommends at least 600,000 iterations for PBKDF2-HMAC-SHA256 (2023 guidance). The
+    /// <paramref name="password"/> array is used as-is: it is neither re-encoded nor cleared, so the
+    /// caller owns both its encoding and its lifetime.
+    /// </remarks>
+    /// <exception cref="System.ArgumentNullException">
+    /// <paramref name="password"/> or <paramref name="salt"/> is <see langword="null"/>.
+    /// </exception>
+    /// <exception cref="System.ArgumentException">
+    /// <paramref name="iterations"/> or <paramref name="keySizeBytes"/> is not greater than zero.
+    /// </exception>
     byte[] DeriveKey(
         byte[] password,
         byte[] salt,

@@ -12,6 +12,9 @@ public enum Pbkdf2Prf
     /// <summary>HMAC using SHA-256.</summary>
     HmacSha256,
 
+    /// <summary>HMAC using SHA-384.</summary>
+    HmacSha384,
+
     /// <summary>HMAC using SHA-512.</summary>
     HmacSha512,
 }
