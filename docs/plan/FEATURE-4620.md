@@ -1,6 +1,6 @@
 # FEATURE-4620 — NuGet release preparation (v1.0.0)
 
-**Status:** TODO (multi-phase)
+**Status:** DONE (multi-phase)
 **Type:** FEATURE (multi-phase)
 **Branch (per phase, at build time):** `feature/feature-4620-phaseNN-<slug>` — one branch per phase, cut from current `HEAD`.
 
@@ -224,7 +224,7 @@ then the owner re-verifies all snippets against the source before declaring the 
 
 ## PHASE04 — Release runbook & final cut prep
 
-**Status:** TODO
+**Status:** DONE
 
 **Goal:** the committed release checklist and a verified, printed publish runbook.
 
