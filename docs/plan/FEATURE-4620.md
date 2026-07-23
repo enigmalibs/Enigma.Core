@@ -1,6 +1,6 @@
 # FEATURE-4620 — NuGet release preparation (v1.0.0)
 
-**Status:** TODO (multi-phase)
+**Status:** DONE (multi-phase)
 **Type:** FEATURE (multi-phase)
 **Branch (per phase, at build time):** `feature/feature-4620-phaseNN-<slug>` — one branch per phase, cut from current `HEAD`.
 
@@ -81,7 +81,7 @@ the NuGet API key is never stored or echoed.
 
 ## PHASE01 — Package metadata & build config + license check
 
-**Status:** TODO
+**Status:** DONE
 
 **Goal:** make `src/Enigma.Core/Enigma.Core.csproj` a complete, valid NuGet package definition and
 verify licensing.
@@ -134,7 +134,7 @@ verify licensing.
 
 ## PHASE02 — Per-category documentation & samples
 
-**Status:** TODO
+**Status:** DONE
 
 **Goal:** one markdown guide per library category under `docs/guides/`, plus an index, each with
 supported algorithms/modes, the key public classes/factories, and copy-pasteable C# usage samples.
@@ -181,7 +181,7 @@ then the owner re-verifies all snippets against the source before declaring the 
 
 ## PHASE03 — Summary README + release notes + community files
 
-**Status:** TODO
+**Status:** DONE
 
 **Goal:** the summary-style `README.md`, initial `RELEASENOTES.md`, finalized `<PackageReleaseNotes>`,
 `SECURITY.md`, and `CLAUDE.md`.
@@ -224,7 +224,7 @@ then the owner re-verifies all snippets against the source before declaring the 
 
 ## PHASE04 — Release runbook & final cut prep
 
-**Status:** TODO
+**Status:** DONE
 
 **Goal:** the committed release checklist and a verified, printed publish runbook.
 
