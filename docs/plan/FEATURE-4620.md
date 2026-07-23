@@ -134,7 +134,7 @@ verify licensing.
 
 ## PHASE02 — Per-category documentation & samples
 
-**Status:** TODO
+**Status:** DONE
 
 **Goal:** one markdown guide per library category under `docs/guides/`, plus an index, each with
 supported algorithms/modes, the key public classes/factories, and copy-pasteable C# usage samples.
