@@ -30,3 +30,8 @@ records in `docs/done/<ID>.md`. Row order is the work order (append new items la
 | - PHASE01 | Generation, CSR & issuance (+ restored extension controls & CSR verification) | DONE | (in FEATURE-099B.md) |
 | - PHASE02 | Chain validation & CRL revocation | DONE | (in FEATURE-099B.md) |
 | - PHASE03 | CertificateInfo parsing, PFX & DER (restored) | DONE | (in FEATURE-099B.md) |
+| FEATURE-4620 | NuGet release preparation (v1.0.0) | TODO | docs/plan/FEATURE-4620.md |
+| - PHASE01 | Package metadata & build config + license check | TODO | (in FEATURE-4620.md) |
+| - PHASE02 | Per-category documentation & samples | TODO | (in FEATURE-4620.md) |
+| - PHASE03 | Summary README + release notes + community files | TODO | (in FEATURE-4620.md) |
+| - PHASE04 | Release runbook & final cut prep | TODO | (in FEATURE-4620.md) |
