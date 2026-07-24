@@ -1,6 +1,6 @@
 # FEATURE-28C7 — Release-doc polish: drop Downloads badge & verify guide/README samples
 
-**Status:** TODO
+**Status:** DONE
 **Type:** FEATURE (single-phase)
 **Branch (at build time):** `feature/feature-28c7-doc-polish` — cut from current `HEAD` when `/build` runs.
 

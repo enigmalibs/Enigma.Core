@@ -1,7 +1,6 @@
 # Enigma.Core
 
 [![NuGet](https://img.shields.io/nuget/v/Enigma.Core.svg)](https://www.nuget.org/packages/Enigma.Core)
-[![Downloads](https://img.shields.io/nuget/dt/Enigma.Core.svg)](https://www.nuget.org/packages/Enigma.Core)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE.md)
 
 A modern, service- and factory-oriented .NET cryptography library built on BouncyCastle. Every
