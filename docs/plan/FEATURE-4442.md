@@ -1,6 +1,6 @@
 # FEATURE-4442 — Abstraction skeleton (interfaces + empty implementations)
 
-- **Status:** TODO
+- **Status:** DONE (all 6 phases complete)
 - **Type:** FEATURE (multi-phase — 6 phases)
 - **Depends on:** FEATURE-56AA (repo/solution must exist first)
 - **Suggested branch per phase (at build):** `feature/feature-4442-phaseNN-<slug>` (one branch per phase)
@@ -68,8 +68,27 @@ src/Enigma.Core/
 ## Phases
 
 ### PHASE01 — Shared foundation
-- **Status:** TODO
+- **Status:** DONE
 - **Scope:** root shared types + redesign baseline; no services.
+
+**Build-time signature design (recorded per principle 8):**
+- **`CryptoDefaults`** (root namespace `Enigma.Core`, file `src/Enigma.Core/CryptoDefaults.cs`) — ported
+  verbatim. `public static class CryptoDefaults { public const int StreamBufferSize = 4096; }`.
+- **Signature-algorithm representation — DECIDED: the recommended Enigma enum.** The old
+  `SignatureAlgorithms` public JCA-style string constants (`"SHA256withRSA"`, …) are **replaced** by a
+  root enum `public enum RsaSignatureAlgorithm { Sha1WithRsa, Sha256WithRsa, Sha384WithRsa, Sha512WithRsa }`
+  (root namespace `Enigma.Core`, file `src/Enigma.Core/RsaSignatureAlgorithm.cs`). This removes the
+  JCA/BouncyCastle naming leak (principle 1); the later implementation maps each member to its JCA name
+  internally. Verified against source usage: the only *choosable* signing algorithms across both
+  consumers — RSA signing (`PublicKeyServiceFactory`, PHASE05) and certificate signing
+  (`X509CertificateServiceFactory`, PHASE06) — are exactly these four RSA variants (default
+  `Sha256WithRsa`); `X509Utils` only ever *reads back* an existing cert's `SigAlgName`, it never selects
+  one. Hence the `Rsa…` name is correct and not too narrow. **PHASE05/06 consume this enum; they do not
+  revisit the representation.**
+- **No other shared root type introduced.** A symmetric cipher-mode enum is single-module (Symmetric —
+  PHASE02) so it lands in its owning module, not root. No unified hash-algorithm enum is created because
+  the plan deliberately keeps per-module hash enums (`OtpHashAlgorithm`, `RsaOaepHash`, `Pbkdf2Prf`,
+  ported verbatim in later phases) — unifying them would contradict the support-type triage.
 - Create root `Enigma.Core` types: `CryptoDefaults`; the shared **signature-algorithm** type (see next
   bullet); and any cross-cutting enums the redesign introduces (e.g. a shared symmetric cipher-mode enum,
   a shared hash-algorithm enum) — define here only if shared by ≥2 modules; otherwise define in the
@@ -86,7 +105,47 @@ src/Enigma.Core/
 - **Acceptance:** compiles clean across all 3 TFMs; XML docs present; no BouncyCastle exposure.
 
 ### PHASE02 — Symmetric + Padding
-- **Status:** TODO
+- **Status:** DONE
+
+**Build-time signature design (recorded per principle 8):**
+- **New Enigma enums** (owning-module, not root — consistent with PHASE01's decision that single-module
+  enums live in their module):
+  - `Enigma.Core.Symmetric.BlockCiphers.BlockCipherMode { Ecb, Cbc, Ctr, Gcm }` — replaces the old
+    per-mode factory methods. Uses the standard name **`Ctr`** (not BouncyCastle's "SIC") to avoid
+    leaking BouncyCastle terminology (principle 1).
+  - `Enigma.Core.Padding.PaddingScheme { None, Pkcs7, Iso7816, Iso10126, X923 }` — the Enigma
+    padding-scheme enum replacing BouncyCastle `IBlockCipherPadding` types. Referenced by both the
+    Padding module and the block-cipher service's `padding` parameter (single source of truth).
+- **`IBlockCipherService`** (namespace `Enigma.Core.Symmetric.BlockCiphers`): the BouncyCastle
+  `ICipherParameters` parameter on `EncryptAsync`/`DecryptAsync` is replaced by
+  `byte[] key, byte[]? iv, BlockCipherMode mode` plus optional `PaddingScheme padding = Pkcs7` and
+  `int gcmMacSizeBits = GcmMacSize.MaxBits`; async-`Stream` + `IProgress<int>` + `CancellationToken`
+  kept (principle 4). `iv` is nullable (ECB uses none). Padding and GCM tag size are optional params so
+  the redesign preserves the configurability the old `Create*Service(paddingFactory)` overloads gave,
+  without any BouncyCastle type. GCM tag size is validated via the ported `GcmMacSize` helper by the
+  later implementation.
+- **`IBlockCipherServiceFactory`**: one `Create<Algo>Service(int bufferSize = CryptoDefaults.StreamBufferSize)`
+  per algorithm — `CreateAesService`, `CreateDesService`, `CreateTripleDesService`, `CreateBlowfishService`,
+  `CreateTwofishService`, `CreateSerpentService`, `CreateCamelliaService`, `CreateCast128Service`,
+  `CreateIdeaService`, `CreateSeedService`, `CreateAriaService`, `CreateSm4Service` (12). The BouncyCastle
+  `Func<IBlockCipher>`/`Func<IBlockCipherPadding>` engine/padding factory params are dropped (principle 3).
+- **`GcmMacSize`** ported verbatim to `Enigma.Core.Symmetric.BlockCiphers` (pure validation); public doc
+  scrubbed of the "underlying BouncyCastle GCM mode" phrasing (principles 6/7).
+- **StreamCiphers** — the source's public API was **already BouncyCastle-free** (`byte[] key, byte[] nonce`;
+  per-algorithm factory methods `CreateChaCha7539Service`/`CreateChaCha20Service`/`CreateSalsa20Service`).
+  Ported faithfully; the plan's "primitives + enums" note is satisfied by primitives + the existing
+  per-algorithm factory methods (no enum introduced — it would be a gratuitous change to an
+  already-clean, already-BouncyCastle-free contract, and it keeps the block/stream factory patterns
+  consistent). Only the impls (`StreamCipherService`, `StreamCipherServiceFactory`) were BouncyCastle-coupled → stubbed.
+- **Padding** — `IPaddingService` (`byte[] Pad/Unpad(byte[], int)`) and `IPaddingServiceFactory`
+  (`CreateNoPaddingService`/`CreatePkcs7Service`/`CreateIso7816Service`/`CreateIso10126Service`/`CreateX923Service`)
+  were already BouncyCastle-free → ported verbatim. The only leak was `PaddingService`'s
+  `Func<IBlockCipherPadding>` constructor → the redesigned stub carries no BouncyCastle (scheme is
+  represented by `PaddingScheme`); `NoPaddingService` kept as its own class per the plan.
+- **All service/factory members throw `NotImplementedException`** (principle 5 / acceptance 3), including
+  the factory `Create*` methods — so no concrete stub needs constructor parameters (avoids unused-field
+  errors under `TreatWarningsAsErrors`).
+
 - **Modules & mapping (old → new namespace → scaffold → redesign flags):**
   - `BlockCiphers/IBlockCipherService, BlockCipherService` → `Enigma.Core.Symmetric.BlockCiphers` → interface + sealed stub → replace BouncyCastle `ICipherParameters` param with `byte[] key`/`byte[] iv` + mode enum.
   - `BlockCiphers/IBlockCipherServiceFactory, BlockCipherServiceFactory` → same → interface + sealed stub → `Create*Service()` per algorithm (AES, DES, 3DES, Blowfish, Twofish, Serpent, Camellia, CAST-128, IDEA, SEED, ARIA, SM4); GCM MAC size via `GcmMacSize`.
@@ -99,7 +158,7 @@ src/Enigma.Core/
 - **Acceptance:** per-phase criteria (below); all block/stream/padding services throw `NotImplementedException`, no BouncyCastle in signatures.
 
 ### PHASE03 — Hashing + KeyDerivation
-- **Status:** TODO
+- **Status:** DONE
 - **Mapping:**
   - `Hash/IHashService, HashService` → `Enigma.Core.Hashing.Hash` → interface + sealed stub → keep async `Stream` + `IProgress<int>` + `CancellationToken`; factory `Create{Md5,Sha1,Sha256,Sha512,Sha3}Service`.
   - `Hash/IHashServiceFactory, HashServiceFactory` → same → interface + sealed stub.
@@ -112,8 +171,22 @@ src/Enigma.Core/
   - `KDF/IArgon2ServiceFactory, Argon2ServiceFactory` → same → interface + sealed stub.
   - `KDF/Argon2Variant, Argon2Version` → same → port verbatim (pure; scrub BouncyCastle mentions from public docs).
 
+**Build-time signature design (recorded per principle 8):**
+- **Hashing.Hash** (`Enigma.Core.Hashing.Hash`):
+  - `IHashService.ComputeHashAsync(Stream input, IProgress<int>? progress = null, CancellationToken cancellationToken = default) : Task<byte[]>`. Async-stream only (per the plan's explicit "keep async Stream + IProgress + CancellationToken" for Hash) — returns the digest as `byte[]` rather than writing to an output stream, since a digest is small (unlike block-cipher ciphertext). **No sync `byte[]` overload** on Hash: the plan lists sync `byte[]` for HMAC only, a deliberate Hash-vs-HMAC distinction honored here.
+  - `IHashServiceFactory` — `CreateMd5Service`, `CreateSha1Service`, `CreateSha256Service`, `CreateSha512Service`, `CreateSha3Service` (SHA-3 = 256-bit), each `(int bufferSize = CryptoDefaults.StreamBufferSize)`. `bufferSize` param follows the PHASE02 stream/block factory convention (hashing is stream-based); the plan didn't spell it out but the established convention governs.
+- **Hashing.Hmac** (`Enigma.Core.Hashing.Hmac`):
+  - `IHmacService.ComputeHmac(byte[] data, byte[] key) : byte[]` (sync) **and** `ComputeHmacAsync(Stream input, byte[] key, IProgress<int>? progress = null, CancellationToken cancellationToken = default) : Task<byte[]>` (async stream) — the plan's explicit "sync `byte[]` + async `Stream` variants". Param order mirrors the block cipher: input/data first, `key` second.
+  - `IHmacServiceFactory` — `CreateHmacSha1Service`, `CreateHmacSha256Service`, `CreateHmacSha512Service`, each `(int bufferSize = CryptoDefaults.StreamBufferSize)`. **Naming rule = name the produced primitive:** "HMAC-SHA256" (RFC 2104 + SHA-256) is the primitive, hence the `Hmac` prefix — consistent with the Hash factory naming its primitive (`CreateSha256Service`). Chosen over bare `CreateSha256Service` on the HMAC factory to avoid reader ambiguity with plain hashing.
+- **KeyDerivation** (`Enigma.Core.KeyDerivation`) — both KDFs are in-memory (no streaming), so **sync `byte[]`** APIs and **no `bufferSize`** on their factories:
+  - Enums (ported verbatim, pure; BouncyCastle mentions scrubbed from docs): `Pbkdf2Prf { HmacSha1, HmacSha256, HmacSha512 }` (aligned with the HMAC service's algorithm set — a PBKDF2 PRF *is* an HMAC); `Argon2Variant { Argon2d, Argon2i, Argon2id }` (RFC 9106); `Argon2Version { Version10, Version13 }` (0x10 / 0x13, RFC 9106).
+  - `IPbkdf2Service.DeriveKey(byte[] password, byte[] salt, int iterations, int keySizeBytes, Pbkdf2Prf prf = Pbkdf2Prf.HmacSha256) : byte[]`. `IPbkdf2ServiceFactory.CreatePbkdf2Service()` — single create method; the PRF is a service-call enum parameter (same shape as `BlockCipherMode` on the block-cipher service), which is why the factory doesn't fan out per-PRF.
+  - `IArgon2Service.DeriveKey(byte[] password, byte[] salt, int iterations, int memorySizeKb, int degreeOfParallelism, int keySizeBytes, Argon2Variant variant = Argon2Variant.Argon2id, Argon2Version version = Argon2Version.Version13) : byte[]`. `IArgon2ServiceFactory.CreateArgon2Service()` — single create method; variant/version are service-call enum parameters.
+  - **`password` kept as `byte[]`** (not `char[]`/`string`): consistent with the byte-oriented library and not flagged for redesign by the plan (unlike PHASE05's `PemPasswordFinder`).
+- **Source-parity note (no source lib in repo, per principle 8 designed at build & reviewed at PR):** the exact *member set* of the ported enums (`Pbkdf2Prf`) and the exact *parameter set* of `IArgon2Service.DeriveKey` (e.g. whether the source also exposed optional `secret`/`associatedData`) should be verified against the original library at PR. Chosen sets are the standard, internally-consistent minimum; adjusting them later does not disturb the skeleton (stubs throw).
+
 ### PHASE04 — Otp + Encoding
-- **Status:** TODO
+- **Status:** DONE
 - **Mapping:**
   - `Otp/IHotpService, HotpService` → `Enigma.Core.Otp` → interface + sealed stub.
   - `Otp/IHotpServiceFactory, HotpServiceFactory` → same → interface + sealed stub.
@@ -124,8 +197,43 @@ src/Enigma.Core/
   - `DataEncoding/IEncodingService` (+ `Base64Service`, `Base32Service`, `HexService`) → `Enigma.Core.Encoding` → interface + three sealed stubs.
   - `DataEncoding/IEncodingServiceFactory, EncodingServiceFactory` → same → interface + sealed stub.
 
+**Build-time signature design (recorded per principle 8):**
+- **Otp** (`Enigma.Core.Otp`) — both OTP schemes are in-memory (an HMAC over a small moving factor), so
+  **sync** APIs and **no `bufferSize`** on their factories (mirrors the KeyDerivation decision):
+  - `OtpHashAlgorithm { Sha1, Sha256, Sha512 }` — ported verbatim (pure). The HMAC hash backing an OTP.
+    Aligned with the HMAC/PBKDF2 PRF algorithm set; default is `Sha1` (the value authenticator apps
+    assume, RFC 4226/6238). Referenced by both OTP **factories**, not the services.
+  - **Config lives on the factory, secrets/time on the service call** (principle 2 — "algorithm chosen via
+    factory `Create*` methods and enums"). The digit count, time-step length and hash algorithm are
+    authenticator configuration, fixed for a given secret, so they are `Create*Service` parameters; the
+    secret + counter/timestamp vary per code, so they are service-method parameters.
+  - `IHotpService.GenerateCode(byte[] secret, long counter) : string` and
+    `VerifyCode(byte[] secret, long counter, string code) : bool` (RFC 4226).
+  - `IHotpServiceFactory.CreateHotpService(int digits = 6, OtpHashAlgorithm hashAlgorithm = OtpHashAlgorithm.Sha1) : IHotpService`.
+  - `ITotpService.GenerateCode(byte[] secret, DateTimeOffset timestamp) : string` and
+    `VerifyCode(byte[] secret, string code, DateTimeOffset timestamp, int window = 1) : bool` (RFC 6238).
+    `timestamp` is an explicit parameter (not read from an ambient clock) so the contract stays
+    deterministic and testable; `window` is the ±time-step drift tolerance, a per-verification concern.
+  - `ITotpServiceFactory.CreateTotpService(int digits = 6, int periodSeconds = 30, OtpHashAlgorithm hashAlgorithm = OtpHashAlgorithm.Sha1) : ITotpService`
+    (RFC 6238 default step = 30 s).
+  - **Deferred:** `OtpProvisioning` + `OtpAuthParameters` not created — no service/factory interface
+    references either (per the support-type triage), so they land with the OTP implementation feature.
+- **Encoding** (`Enigma.Core.Encoding`) — one interface, three per-scheme sealed stubs, one factory. All
+  in-memory, so **sync `byte[]`/`string`** and **no `bufferSize`**:
+  - `IEncodingService.Encode(byte[] data) : string` and `Decode(string encoded) : byte[]` — exact
+    inverses. A single interface shared by all schemes (the scheme is a factory choice, not a signature
+    difference), consistent with the block-cipher / hash single-interface + per-algorithm-factory pattern.
+  - `Base64Service`, `Base32Service`, `HexService` — three sealed stubs implementing `IEncodingService`.
+  - `IEncodingServiceFactory.CreateBase64Service() / CreateBase32Service() / CreateHexService()`, each
+    returning `IEncodingService`; `EncodingServiceFactory` sealed stub.
+- **Source-parity note (no source lib in repo — designed at build, reviewed at PR, per principle 8):** to
+  verify against the original library at PR — (1) the exact `OtpHashAlgorithm` member set; (2) whether the
+  source OTP services exposed a current-time convenience overload / put the TOTP validation window on the
+  factory rather than the call; (3) the exact `IEncodingService` member names and whether Hex/Base32 had
+  scheme options (casing, padding). All are adjustable later without disturbing the skeleton (stubs throw).
+
 ### PHASE05 — Asymmetric
-- **Status:** TODO
+- **Status:** DONE
 - **Mapping:**
   - `PublicKey/IPublicKeyService, PublicKeyService` → `Enigma.Core.Asymmetric.PublicKey` → interface + sealed stub → RSA encrypt (PKCS#1 v1.5 + OAEP) & sign.
   - `PublicKey/IPublicKeyServiceFactory, PublicKeyServiceFactory` → same → interface + sealed stub.
@@ -138,14 +246,116 @@ src/Enigma.Core/
 - **Flag:** the redesigned RSA/PQC APIs must expose key material as PEM/DER `string`/`byte[]`, not
   BouncyCastle `AsymmetricKeyParameter`/key-pair types (verify source signatures at build).
 
+**Build-time signature design (recorded per principle 8):**
+- **PublicKey** (`Enigma.Core.Asymmetric.PublicKey`) — RSA operates on data smaller than the modulus, so
+  it is inherently **in-memory**: all members are **sync `byte[]`** with **no `bufferSize`** on the
+  factory (mirrors the KDF/OTP in-memory decision; the "async-Stream vs sync-`byte[]` split" of
+  principle 4 applies only where the source streamed, which RSA does not).
+  - **`RsaOaepHash { Sha1, Sha256, Sha384, Sha512 }`** — ported verbatim (pure enum; the hash backing
+    RSAES-OAEP). Aligned with the four hashes of the root `RsaSignatureAlgorithm`; default `Sha256`.
+    **Referenced by an interface signature** (`EncryptOaep`/`DecryptOaep`), so it is in-scope for the
+    skeleton (unlike the deferred support types).
+  - **`IPublicKeyService`** — the two encryption padding schemes the plan names ("PKCS#1 v1.5 + OAEP")
+    are exposed as **explicit method pairs** rather than a padding-selector enum: `EncryptPkcs1`/
+    `DecryptPkcs1` and `EncryptOaep`/`DecryptOaep(…, RsaOaepHash hash = Sha256)`. This keeps the ported
+    `RsaOaepHash` meaningful (it is the OAEP method's hash parameter) without introducing a second
+    padding enum that would duplicate it; it also parallels the Padding module's per-scheme methods.
+    Signing uses `Sign(…, RsaSignatureAlgorithm algorithm = Sha256WithRsa, …)` / `Verify(…, algorithm)`,
+    consuming the PHASE01 root enum (as PHASE01 intended). Keys are PEM `string` (public/private).
+  - **`PemPasswordFinder` redesigned away** (principle 1 / support-type triage): the BouncyCastle
+    `IPasswordFinder` is replaced by a plain **`char[]? password = null`** parameter on the private-key
+    operations (`DecryptPkcs1`, `DecryptOaep`, `Sign`) — `null` = the PEM is not encrypted. `char[]`
+    (not `string`) is the conventional clearable passphrase representation and matches what
+    `IPasswordFinder.GetPassword()` returned. No `PemPasswordFinder` type is created.
+  - **`IPublicKeyServiceFactory.CreatePublicKeyService()`** — single, parameterless create (RSA is the
+    only algorithm; padding/OAEP-hash/signature-algorithm are per-call parameters, exactly as
+    block-cipher *mode* is a per-call parameter rather than a factory fan-out). Named for the service
+    type the plan mandates (`IPublicKeyService`), not `CreateRsaService`.
+- **Pqc** (`Enigma.Core.Asymmetric.Pqc`) — both schemes are in-memory ⇒ **sync `byte[]`**, no
+  `bufferSize`. Keys/ciphertexts/signatures are raw `byte[]` in their FIPS 203/204 encodings (the flag's
+  "PEM/DER `string`/`byte[]`" — `byte[]` chosen for these binary blobs). Multi-value results
+  (`GenerateKeyPair`, `Encapsulate`) use **named `ValueTuple`s** rather than new named DTOs, so no
+  support type outside the plan's triage is introduced.
+  - **New Enigma parameter-set enums** (owning-module, per the Notes' "new Enigma type … define it in
+    the owning module" rule — the redesign needs a BouncyCastle-free way to pick the security level via
+    the factory, principle 2): `MLDsaParameterSet { MLDsa44, MLDsa65, MLDsa87 }` (FIPS 204; default
+    `MLDsa65`, category 3) and `MLKemParameterSet { MLKem512, MLKem768, MLKem1024 }` (FIPS 203; default
+    `MLKem768`, category 3). Two-letter acronym `ML` stays upper-case per .NET naming guidelines
+    (matching the plan's `IMLDsaService`/`IMLKemService`).
+  - **`IMLDsaService`** (FIPS 204 signatures): `(byte[] publicKey, byte[] privateKey) GenerateKeyPair()`,
+    `byte[] Sign(byte[] message, byte[] privateKey)`, `bool Verify(byte[] message, byte[] signature,
+    byte[] publicKey)`. **`IMLDsaServiceFactory.CreateMLDsaService(MLDsaParameterSet parameterSet =
+    MLDsa65)`**.
+  - **`IMLKemService`** (FIPS 203 KEM): `(byte[] publicKey, byte[] privateKey) GenerateKeyPair()`,
+    `(byte[] ciphertext, byte[] sharedSecret) Encapsulate(byte[] publicKey)`, `byte[]
+    Decapsulate(byte[] ciphertext, byte[] privateKey)`. **`IMLKemServiceFactory.CreateMLKemService(
+    MLKemParameterSet parameterSet = MLKem768)`**.
+- **Source-parity note (no source lib in repo — designed at build, reviewed at PR, per principle 8):** to
+  verify against the original library at PR — (1) RSA key material: whether the source also accepted/
+  returned DER `byte[]` overloads or exposed key-pair generation on this service (kept to PEM `string` +
+  encrypt/sign per the mapping's stated scope); (2) whether encryption padding was a single method with a
+  scheme selector rather than the `EncryptPkcs1`/`EncryptOaep` pairs chosen here; (3) passphrase type
+  (`char[]` vs `string`) and exact `RsaOaepHash` member set; (4) PQC key representation (raw `byte[]` vs
+  PEM `string` vs a named key-pair DTO) and whether the source surfaced the parameter set on the factory
+  (as here) or per call; (5) exact PQC parameter-set member sets. All are adjustable later without
+  disturbing the skeleton (stubs throw).
+
 ### PHASE06 — Certificates
-- **Status:** TODO
+- **Status:** DONE
 - **Mapping:**
   - `X509/IX509CertificateService, X509CertificateService` → `Enigma.Core.Certificates` → interface + sealed stub (self-signed generation, CSR/PKCS#10, issuance, chain + CRL validation).
   - `X509/IX509CertificateServiceFactory, X509CertificateServiceFactory` → same → interface + sealed stub.
   - `X509/CertificateInfo` → same → **redesign**: replace `Org.BouncyCastle.Math.BigInteger SerialNumber` with `System.Numerics.BigInteger` / `string` / `byte[]`; keep the other members.
 - **Flag:** certificate/CSR/chain APIs must take/return PEM/DER `string`/`byte[]`, not BouncyCastle
   `X509Certificate`/`Pkcs10CertificationRequest` (verify at build).
+
+**Build-time signature design (recorded per principle 8):**
+- **All in-memory ⇒ sync + no `bufferSize`.** Certificates, CSRs and CRLs are small structured blobs, not
+  streams — so (like the KDF/OTP/Asymmetric phases) every member is **sync** and the factory carries no
+  `bufferSize`. Principle 4's "async-Stream vs sync-`byte[]` split" applies only where the source streamed,
+  which X.509 does not.
+- **All PEM `string` I/O** (satisfies the flag). Certificates, CSRs, CRLs and keys cross the API as
+  PEM-encoded `string`; no BouncyCastle `X509Certificate`/`Pkcs10CertificationRequest`/`X509Crl` type
+  appears. DER `byte[]` overloads are **not** added here (kept lean, exactly as PHASE05 kept RSA to PEM
+  `string`); flagged for PR (source-parity note).
+- **Deterministic validity via explicit `DateTimeOffset`** (not an ambient clock) on generation/issuance —
+  mirrors PHASE04's TOTP decision to take an explicit timestamp so the contract stays testable.
+- **Signing algorithm = the PHASE01 root `RsaSignatureAlgorithm` enum** (default `Sha256WithRsa`) on
+  generation/issuance/CSR — exactly the consumer PHASE01 fixed the shared vocabulary for. *Selecting* a
+  signing algorithm uses the enum; *reading back* an existing cert's algorithm (`CertificateInfo`) is a
+  plain `string`, because a parsed cert may carry any algorithm (ECDSA, …), not just the four RSA variants
+  — this is the exact distinction PHASE01 anticipated ("`X509Utils` only ever *reads back* `SigAlgName`").
+- **`CertificateInfo` — REDESIGNED** (`src/Enigma.Core/Certificates/CertificateInfo.cs`): a
+  `public sealed record` with `required` init-only properties, each XML-documented. The BouncyCastle
+  `Org.BouncyCastle.Math.BigInteger SerialNumber` is replaced by **`System.Numerics.BigInteger`** (the
+  plan's chosen redesign). Member set (standard X.509 fields): `string Subject`, `string Issuer`,
+  `System.Numerics.BigInteger SerialNumber`, `DateTimeOffset NotBefore`, `DateTimeOffset NotAfter`,
+  `string SignatureAlgorithm` (read-back name), `int Version`, `string Thumbprint`. **In-scope for the
+  skeleton because it is referenced by an interface signature** (`GetCertificateInfo`) — unlike the
+  deferred support types. `System.Numerics.BigInteger` ships in `netstandard2.0` (no new package).
+- **`IX509CertificateService`** (`Enigma.Core.Certificates`) — six members covering the plan's named
+  capabilities:
+  - `string GenerateSelfSignedCertificate(string subjectDistinguishedName, string privateKeyPem, DateTimeOffset notBefore, DateTimeOffset notAfter, RsaSignatureAlgorithm signatureAlgorithm = Sha256WithRsa, char[]? password = null)` — self-signed generation.
+  - `string GenerateCertificateSigningRequest(string subjectDistinguishedName, string privateKeyPem, RsaSignatureAlgorithm signatureAlgorithm = Sha256WithRsa, char[]? password = null)` — CSR / PKCS#10.
+  - `string IssueCertificate(string certificateSigningRequestPem, string issuerCertificatePem, string issuerPrivateKeyPem, DateTimeOffset notBefore, DateTimeOffset notAfter, RsaSignatureAlgorithm signatureAlgorithm = Sha256WithRsa, char[]? password = null)` — issuance (sign a CSR with a CA).
+  - `bool ValidateChain(string certificatePem, IReadOnlyList<string> trustedRootPems, IReadOnlyList<string>? intermediatePems = null)` — chain validation.
+  - `bool IsRevoked(string certificatePem, string crlPem, string issuerCertificatePem)` — CRL validation.
+  - `CertificateInfo GetCertificateInfo(string certificatePem)` — parse/read-back (consumes the redesigned `CertificateInfo`).
+  - The `char[]? password` on the private-key-consuming operations reuses PHASE05's `PemPasswordFinder`-redesign convention (`null` = unencrypted PEM). No BouncyCastle in any signature (principle 1/2).
+- **`IX509CertificateServiceFactory.CreateX509CertificateService()`** — single, parameterless create (X.509
+  is the only "algorithm"; signature algorithm / validity / trust inputs are per-call parameters, exactly
+  as PHASE05's `CreatePublicKeyService()`). Named for the service type the plan mandates.
+- **All service/factory members throw `NotImplementedException`** (principle 5 / acceptance 3), including
+  the factory `Create*` method — so no concrete stub needs constructor parameters (avoids unused-field
+  errors under `TreatWarningsAsErrors`).
+- **Source-parity note (no source library in repo — designed at build, reviewed at PR, per principle 8):**
+  to verify against the original library at PR — (1) the exact `CertificateInfo` member set (whether
+  `Version`/`Thumbprint` were present; whether `SignatureAlgorithm` was a `string` or an enum); (2) whether
+  the source also took/returned DER `byte[]` overloads or exposed key-pair generation on this service (kept
+  to PEM `string` per the mapping's scope); (3) exact method names/signatures for generation, issuance,
+  chain and CRL validation (whether chain validation took explicit trusted-root/intermediate collections as
+  here, and whether revocation was a separate `IsRevoked` vs folded into chain validation); (4) passphrase
+  type (`char[]` vs `string`). All adjustable later without disturbing the skeleton (stubs throw).
 
 ## Deferred (NOT part of this skeleton; land with their implementation features)
 - `Extensions/*` — `StreamExtensions`, `EncodingExtensions`, `StreamReadHelpers` (pure helpers; no interface depends on them).

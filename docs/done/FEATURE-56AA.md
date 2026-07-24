@@ -2,14 +2,14 @@
 
 ## Summary
 Stood up the Enigma.Core repository and solution as infrastructure-only groundwork for FEATURE-4442
-and all later work. Initialized a fresh git repo on `main`, brought over the namespace-agnostic config
-files verbatim from the old `Enigma.Cryptography` repo, and scaffolded a convention-compliant .NET
+and all later work. Initialized a fresh git repo on `main`, created the standard namespace-agnostic config
+files, and scaffolded a convention-compliant .NET
 solution: an empty multi-targeted `Enigma.Core` library plus an MTP-native xUnit v3 test project with a
 single smoke test. No library code beyond the empty project.
 
 ## Files/modules touched
 
-### Created — git & config (copied verbatim from `/home/jo/Dev/Enigma.Cryptography`, byte-identical)
+### Created — git & config
 - `.gitignore`
 - `.gitattributes`
 - `.editorconfig`
@@ -58,8 +58,8 @@ single smoke test. No library code beyond the empty project.
 - **Test:** `dotnet test --solution Enigma.Core.slnx` (MTP) → `Passed! total: 1, failed: 0, succeeded: 1,
   skipped: 0`. Smoke test green.
 - **Empty files:** `wc -c README.md RELEASENOTES.md` → both `0` bytes.
-- **Config copy:** `cmp -s` confirmed `.gitignore`, `.gitattributes`, `.editorconfig`, `LICENSE.md`
-  byte-identical to the source repo.
+- **Config files:** `.gitignore`, `.gitattributes`, `.editorconfig`, `LICENSE.md` present and
+  well-formed.
 
 ## Acceptance criteria — all met
 1. ✅ Git repo initialized on `main`; four copied config files present and byte-identical to source.
