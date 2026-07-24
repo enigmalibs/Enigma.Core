@@ -5,7 +5,7 @@ using Xunit;
 namespace Enigma.Core.UnitTests.Pqc;
 
 /// <summary>
-/// Fixed-vector decapsulation for ML-KEM-1024 against pinned material ported from Enigma.Cryptography: the raw
+/// Fixed-vector decapsulation for ML-KEM-1024 against pinned material: the raw
 /// FIPS 203 private keys (<c>kem1024_A_private.key</c> / <c>kem1024_B_private.key</c>, regenerated from the legacy
 /// encrypted-PKCS#8 PEM fixtures as raw unencrypted key bytes), the <c>encapsulation.bin</c> ciphertext and the
 /// expected 32-byte <c>secret.bin</c>. Key A must recover the known secret; the unrelated key B must not

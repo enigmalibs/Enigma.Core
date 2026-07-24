@@ -3,7 +3,7 @@
 - **Status:** DONE
 - **Type:** FEATURE phase (3 of 3 — final; completes FEATURE-534F)
 - **Branch:** `feature/feature-534f-phase03-streamciphers` (cut from `feature/feature-534f-phase02-blockciphers` @ `c0eacad`)
-- **Basis:** ported from Enigma.Cryptography v5.0.0 (`/home/jo/Dev/Enigma.Cryptography`), `StreamCiphers` module.
+- **Scope:** `StreamCiphers` module.
 
 ## Summary
 Implemented the stream-cipher subsystem behind the API frozen by FEATURE-4442 PHASE02, ported at maximum

@@ -14,7 +14,7 @@ fixed now rather than reshaped mid-feature.
 ### Created — library (root namespace `Enigma.Core`)
 - `src/Enigma.Core/CryptoDefaults.cs` — `public static class CryptoDefaults` with
   `public const int StreamBufferSize = 4096`. Ported verbatim from the source (renamespaced
-  `Enigma.Cryptography` → `Enigma.Core`); doc comment unchanged (no BouncyCastle references to scrub).
+  to `Enigma.Core`); doc comment unchanged (no BouncyCastle references to scrub).
 - `src/Enigma.Core/RsaSignatureAlgorithm.cs` — `public enum RsaSignatureAlgorithm` with members
   `Sha1WithRsa`, `Sha256WithRsa`, `Sha384WithRsa`, `Sha512WithRsa`. Replaces the source's public
   `SignatureAlgorithms` string constants; XML docs on the type and every member.

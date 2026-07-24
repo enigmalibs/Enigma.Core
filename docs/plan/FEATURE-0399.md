@@ -4,25 +4,10 @@
 - **Type:** FEATURE (single-phase)
 - **Depends on:** FEATURE-61D1 (foundation — BouncyCastle package ref + CSV vector harness)
 - **Suggested branch (at build):** `feature/feature-0399-encoding`
-- **Basis:** ported from Enigma.Cryptography v5.0.0 (`/home/jo/Dev/Enigma.Cryptography`); redesign decisions validated by user 2026-07-21.
+- **Basis:** redesign decisions validated by user 2026-07-21.
 
 ## Objective
-Implement the three textual encoders — Base64, hexadecimal, and Base32/RFC 4648 — and their factory behind the frozen `Enigma.Core.Encoding` contract, porting the working behavior and test vectors from Enigma.Cryptography v5.0.0's `DataEncoding` module at MAXIMUM FIDELITY. BouncyCastle stays entirely internal (never in a public signature, base type, or public support member); the public surface remains the optionless single `IEncodingService` plus its factory, exactly as frozen by FEATURE-4442.
-
-## Basis — port from Enigma.Cryptography v5.0.0
-Exact old source files (from the spec's `oldToNewMapping`):
-- `src/Enigma.Cryptography/DataEncoding/IEncodingService.cs`
-- `src/Enigma.Cryptography/DataEncoding/Base64Service.cs` (delegates to `Org.BouncyCastle.Utilities.Encoders.Base64`)
-- `src/Enigma.Cryptography/DataEncoding/HexService.cs` (delegates to `Org.BouncyCastle.Utilities.Encoders.Hex`; lowercase output)
-- `src/Enigma.Cryptography/DataEncoding/Base32Service.cs` (pure built-in RFC 4648 bit-shift impl; no BouncyCastle)
-- `src/Enigma.Cryptography/DataEncoding/IEncodingServiceFactory.cs`
-- `src/Enigma.Cryptography/DataEncoding/EncodingServiceFactory.cs`
-
-Old test files that carry the behavior forward:
-- `src/UnitTests/DataEncoding/Base32ServiceTests.cs`
-- `src/UnitTests/DataEncoding/Base64ServiceTests.cs`
-- `src/UnitTests/DataEncoding/HexServiceTests.cs`
-- `src/UnitTests/DataEncoding/EncodingServiceFactoryTests.cs`
+Implement the three textual encoders — Base64, hexadecimal, and Base32/RFC 4648 — and their factory behind the frozen `Enigma.Core.Encoding` contract, porting the working behavior and test vectors at MAXIMUM FIDELITY. BouncyCastle stays entirely internal (never in a public signature, base type, or public support member); the public surface remains the optionless single `IEncodingService` plus its factory, exactly as frozen by FEATURE-4442.
 
 ## Scope & mapping
 | Old (`DataEncoding`) | New home | Disposition | Note |

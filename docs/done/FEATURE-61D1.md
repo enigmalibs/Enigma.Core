@@ -3,7 +3,6 @@
 - **Status:** DONE
 - **Type:** FEATURE (single-phase)
 - **Branch:** `feature/feature-61d1-foundation` (cut from `develop`)
-- **Basis:** ported from Enigma.Cryptography v5.0.0 (`/home/jo/Dev/Enigma.Cryptography`, commit `c464456`).
 
 ## Summary
 Made Enigma.Core buildable and testable against the frozen FEATURE-4442 skeleton and provided the

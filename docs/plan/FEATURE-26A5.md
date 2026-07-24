@@ -4,23 +4,10 @@
 - **Type:** FEATURE (single-phase)
 - **Depends on:** FEATURE-61D1 (foundation — stream Extensions + package ref + harness)
 - **Suggested branch (at build):** `feature/feature-26a5-hashing`
-- **Basis:** ported from Enigma.Cryptography v5.0.0 (`/home/jo/Dev/Enigma.Cryptography`); redesign decisions validated by user 2026-07-21.
+- **Basis:** redesign decisions validated by user 2026-07-21.
 
 ## Objective
-Implement the Enigma.Core Hashing module (Hash + HMAC) behind the API frozen by FEATURE-4442 PHASE03, porting the working behaviour and BouncyCastle wiring from Enigma.Cryptography v5.0.0 at MAXIMUM FIDELITY. Hash is async-stream-only returning `byte[]`; HMAC offers a sync `byte[]` variant plus an async `Stream` variant. Per the user-validated 2026-07-21 decision, the dropped configurable SHA-3 output size {224,256,384,512} is RESTORED (default 256). Every BouncyCastle type stays strictly internal — never in a public signature, base type, or public support member (principle 1).
-
-## Basis — port from Enigma.Cryptography v5.0.0
-Exact old source files (from the spec `oldToNewMapping`):
-- `src/Enigma.Cryptography/Hash/IHashService.cs`
-- `src/Enigma.Cryptography/Hash/HashService.cs`
-- `src/Enigma.Cryptography/Hash/IHashServiceFactory.cs`
-- `src/Enigma.Cryptography/Hash/HashServiceFactory.cs`
-- `src/Enigma.Cryptography/Hmac/IHmacService.cs`
-- `src/Enigma.Cryptography/Hmac/HmacService.cs`
-- `src/Enigma.Cryptography/Hmac/IHmacServiceFactory.cs`
-- `src/Enigma.Cryptography/Hmac/HmacServiceFactory.cs`
-- `src/Enigma.Cryptography/CryptoDefaults.cs` (already ported verbatim to root `Enigma.Core` in FEATURE-4442 PHASE01; `StreamBufferSize = 4096` — consume only, no action)
-- Tests: `src/UnitTests/Hash/*Tests.cs` + `*.csv`, `src/UnitTests/Hmac/*Tests.cs` + `*.csv`, `src/UnitTests/Infrastructure/CsvData.cs`, `src/UnitTests/Infrastructure/ProgressAndCancellationTests.cs`
+Implement the Enigma.Core Hashing module (Hash + HMAC) behind the API frozen by FEATURE-4442 PHASE03, porting the working behaviour and BouncyCastle wiring at MAXIMUM FIDELITY. Hash is async-stream-only returning `byte[]`; HMAC offers a sync `byte[]` variant plus an async `Stream` variant. Per the user-validated 2026-07-21 decision, the dropped configurable SHA-3 output size {224,256,384,512} is RESTORED (default 256). Every BouncyCastle type stays strictly internal — never in a public signature, base type, or public support member (principle 1).
 
 ## Scope & mapping
 | Old file / member | New home | Disposition | Note |

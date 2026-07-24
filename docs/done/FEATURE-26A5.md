@@ -3,7 +3,7 @@
 - **Status:** DONE
 - **Type:** FEATURE (single-phase)
 - **Branch:** `feature/feature-26a5-hashing` (cut from `feature/feature-0399-encoding` @ `b13440f`)
-- **Basis:** ported from Enigma.Cryptography v5.0.0 (`/home/jo/Dev/Enigma.Cryptography`), `Hash` + `Hmac` modules.
+- **Scope:** `Hash` + `Hmac` modules.
 
 ## Summary
 Implemented the Hashing module behind the API frozen by FEATURE-4442 PHASE03, porting the working

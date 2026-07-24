@@ -3,7 +3,7 @@
 - **Status:** DONE
 - **Type:** FEATURE phase (1 of 2)
 - **Branch:** `feature/feature-679f-keyderivation` continued → dev branch `feature/feature-5761-phase01-otp` (cut from `feature/feature-679f-keyderivation` @ `8a3c95e`)
-- **Basis:** ported from Enigma.Cryptography v5.0.0 (`/home/jo/Dev/Enigma.Cryptography`), `Otp` module (HOTP/TOTP).
+- **Scope:** `Otp` module (HOTP/TOTP).
 
 ## Summary
 Implemented HOTP (RFC 4226) and TOTP (RFC 6238) generation/verification and their factories behind the

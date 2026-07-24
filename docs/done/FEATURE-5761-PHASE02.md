@@ -3,7 +3,7 @@
 - **Status:** DONE (final phase — FEATURE-5761 now complete)
 - **Type:** FEATURE phase (2 of 2)
 - **Branch:** `feature/feature-5761-phase02-otp` (cut from `feature/feature-5761-phase01-otp` @ `456e9e8`)
-- **Basis:** ported from Enigma.Cryptography v5.0.0 (`/home/jo/Dev/Enigma.Cryptography`), `Otp` module
+- **Scope:** `Otp` module
   (`OtpProvisioning`, `OtpAuthParameters`).
 
 ## Summary

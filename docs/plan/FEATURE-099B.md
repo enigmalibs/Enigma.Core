@@ -4,23 +4,10 @@
 - **Type:** FEATURE (multi-phase — 3 phases)
 - **Depends on:** FEATURE-2E3E (publickey — RSA keygen + PEM); transitively FEATURE-61D1
 - **Suggested branch (at build):** `feature/feature-099b-phaseNN-certificates-x509` (one branch per phase)
-- **Basis:** ported from Enigma.Cryptography v5.0.0 (`/home/jo/Dev/Enigma.Cryptography`); redesign decisions validated by user 2026-07-21.
+- **Basis:** redesign decisions validated by user 2026-07-21.
 
 ## Objective
-Implement the X.509 certificate service behind the BouncyCastle-free contract in `Enigma.Core.Certificates`, porting behaviour and tests from Enigma.Cryptography v5.0.0 at **maximum fidelity**: self-signed generation, CSR (PKCS#10) generation, issuance from a CSR, chain validation against trusted roots, CRL-based revocation checking, certificate parsing into `CertificateInfo`, **plus the capabilities the FEATURE-4442 skeleton dropped that the user validated for restoration** — X.509 extension controls (CA / KeyUsage / SAN) on generation and issuance and read-back on `CertificateInfo`, PFX / PKCS#12 import & export, CSR signature verification, and DER load/save. All certificate/CSR/CRL/key I/O crosses the API as PEM strings (PKCS#12 and DER as `byte[]`, the one documented binary exception), with explicit `DateTimeOffset` validity and the `RsaSignatureAlgorithm` enum. Every BouncyCastle type stays internal (principle 1).
-
-## Basis — port from Enigma.Cryptography v5.0.0
-Exact old source files (from the spec `oldToNewMapping`):
-- `src/Enigma.Cryptography/X509/IX509CertificateService.cs`
-- `src/Enigma.Cryptography/X509/X509CertificateService.cs`
-- `src/Enigma.Cryptography/X509/IX509CertificateServiceFactory.cs`
-- `src/Enigma.Cryptography/X509/X509CertificateServiceFactory.cs`
-- `src/Enigma.Cryptography/X509/CertificateInfo.cs`
-- `src/Enigma.Cryptography/Utils/X509Utils.cs` (un-defer → internal)
-- `src/Enigma.Cryptography/Utils/PemUtils.cs` (un-defer → internal, shared with publickey)
-- `src/Enigma.Cryptography/Utils/RandomUtils.cs` (optional internal RNG, or `SecureRandom` directly as the old service does)
-- `src/Enigma.Cryptography/SignatureAlgorithms.cs` (JCA-name mapping → internal)
-- Tests: `src/UnitTests/X509/{SelfSignedCertificate,Csr,IssueCertificate,ChainValidation,CertificateInfo,CertificateFormat,Pfx}Tests.cs`
+Implement the X.509 certificate service behind the BouncyCastle-free contract in `Enigma.Core.Certificates` at **maximum fidelity**: self-signed generation, CSR (PKCS#10) generation, issuance from a CSR, chain validation against trusted roots, CRL-based revocation checking, certificate parsing into `CertificateInfo`, **plus the capabilities the FEATURE-4442 skeleton dropped that the user validated for restoration** — X.509 extension controls (CA / KeyUsage / SAN) on generation and issuance and read-back on `CertificateInfo`, PFX / PKCS#12 import & export, CSR signature verification, and DER load/save. All certificate/CSR/CRL/key I/O crosses the API as PEM strings (PKCS#12 and DER as `byte[]`, the one documented binary exception), with explicit `DateTimeOffset` validity and the `RsaSignatureAlgorithm` enum. Every BouncyCastle type stays internal (principle 1).
 
 ## Scope & mapping
 | Old | New home | Note |

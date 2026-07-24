@@ -3,7 +3,7 @@
 - **Status:** DONE
 - **Type:** FEATURE phase (1 of 3)
 - **Branch:** `feature/feature-534f-phase01-padding` (cut from `feature/feature-5761-phase02-otp` @ `f63c043`)
-- **Basis:** ported from Enigma.Cryptography v5.0.0 (`/home/jo/Dev/Enigma.Cryptography`), `Padding` module.
+- **Scope:** `Padding` module.
 
 ## Summary
 Implemented the Padding module behind the API frozen by FEATURE-4442 PHASE02, ported at maximum fidelity

@@ -3,7 +3,7 @@
 - **Status:** DONE
 - **Type:** FEATURE (single-phase)
 - **Branch:** `feature/feature-679f-keyderivation` (cut from `feature/feature-26a5-hashing` @ `fc64994`)
-- **Basis:** ported from Enigma.Cryptography v5.0.0 (`/home/jo/Dev/Enigma.Cryptography`), `KDF` module.
+- **Scope:** `KDF` module.
 
 ## Summary
 Implemented the two in-memory key-derivation services behind the API frozen by FEATURE-4442 PHASE03,

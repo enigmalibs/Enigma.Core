@@ -3,7 +3,7 @@
 - **Status:** DONE
 - **Type:** FEATURE phase (2 of 3)
 - **Branch:** `feature/feature-099b-phase02-chain-validation` (cut from `feature/feature-099b-phase01-certificates-x509` @ `a9210f9`)
-- **Basis:** ported from Enigma.Cryptography v5.0.0 (`/home/jo/Dev/Enigma.Cryptography`), `X509/X509CertificateService.ValidateChain` + `UnitTests/X509/ChainValidationTests`.
+- **Scope:** `X509/X509CertificateService.ValidateChain` + `UnitTests/X509/ChainValidationTests`.
 
 ## Summary
 Implemented the two remaining trust operations behind the PEM contract: **`ValidateChain`** (PKIX path

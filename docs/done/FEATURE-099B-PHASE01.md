@@ -3,7 +3,7 @@
 - **Status:** DONE
 - **Type:** FEATURE phase (1 of 3)
 - **Branch:** `feature/feature-099b-phase01-certificates-x509` (cut from `feature/feature-0d6d-pqc` @ `a68c0d6`)
-- **Basis:** ported from Enigma.Cryptography v5.0.0 (`/home/jo/Dev/Enigma.Cryptography`), `X509` module + `Utils/X509Utils`, `Utils/PemUtils`, `SignatureAlgorithms`.
+- **Scope:** `X509` module + `Utils/X509Utils`, `Utils/PemUtils`, `SignatureAlgorithms`.
 
 ## Summary
 Implemented the first slice of the X.509 certificate service behind the BouncyCastle-free PEM contract frozen

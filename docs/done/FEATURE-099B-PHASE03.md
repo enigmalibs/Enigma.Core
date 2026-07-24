@@ -3,7 +3,7 @@
 - **Status:** DONE
 - **Type:** FEATURE phase (3 of 3 — final phase; the FEATURE-099B item is now DONE)
 - **Branch:** `feature/feature-099b-phase03-info-pfx-der` (cut from `feature/feature-099b-phase02-chain-validation` @ `f5d5a30`)
-- **Basis:** ported from Enigma.Cryptography v5.0.0 (`/home/jo/Dev/Enigma.Cryptography`): `Utils/X509Utils`
+- **Scope:** `Utils/X509Utils`
   (`ExportToPfx`/`LoadFromPfx`/`GetCertificateInfo`/`SaveCertificate`/`LoadCertificate`), `X509/CertificateInfo`, and
   `UnitTests/X509/{CertificateInfoTests,CertificateFormatTests,PfxTests}`.
 

@@ -4,25 +4,11 @@
 - **Type:** FEATURE (single-phase)
 - **Depends on:** FEATURE-61D1 (foundation — package ref + harness; PemUtils un-deferred here)
 - **Suggested branch (at build):** `feature/feature-2e3e-publickey-rsa`
-- **Basis:** ported from Enigma.Cryptography v5.0.0 (`/home/jo/Dev/Enigma.Cryptography`); redesign decisions validated by user 2026-07-21.
+- **Basis:** redesign decisions validated by user 2026-07-21.
 
 ## Objective
 
-Implement the RSA public-key feature behind the FROZEN `Enigma.Core.Asymmetric.PublicKey` contract, porting the working behavior and tests of Enigma.Cryptography v5.0.0 at MAXIMUM FIDELITY while keeping BouncyCastle entirely internal (never in a public signature, base type, thrown-type-in-signature, or public support member). Deliver working `EncryptPkcs1`/`DecryptPkcs1`, `EncryptOaep`/`DecryptOaep(RsaOaepHash)`, `Sign`/`Verify(RsaSignatureAlgorithm)` over PEM-string keys with a clearable `char[]?` passphrase, the parameterless `CreatePublicKeyService()` factory, and — per user validation 2026-07-21 — the RESTORED `GenerateRsaKeyPair` returning PEM strings.
-
-## Basis — port from Enigma.Cryptography v5.0.0
-
-Exact old source files (from `oldToNewMapping`):
-- `src/Enigma.Cryptography/PublicKey/IPublicKeyService.cs`
-- `src/Enigma.Cryptography/PublicKey/PublicKeyService.cs`
-- `src/Enigma.Cryptography/PublicKey/IPublicKeyServiceFactory.cs`
-- `src/Enigma.Cryptography/PublicKey/PublicKeyServiceFactory.cs`
-- `src/Enigma.Cryptography/PublicKey/RsaOaepHash.cs`
-- `src/Enigma.Cryptography/PublicKey/PemPasswordFinder.cs`
-- `src/Enigma.Cryptography/SignatureAlgorithms.cs`
-- `src/Enigma.Cryptography/Utils/PemUtils.cs`
-- `src/Enigma.Cryptography/Utils/RandomUtils.cs` (SecureRandom source for key generation)
-- Test basis: `src/UnitTests/PublicKey/{RsaEncryptDecryptTests,RsaOaepTests,RsaServiceTests}.cs`, `src/UnitTests/SignatureAlgorithmsTests.cs`, `src/UnitTests/Utils/PemUtilsTests.cs`, `src/UnitTests/Validation/{ArgumentValidationTests,CryptoKeyPairFixture}.cs`, fixtures `src/UnitTests/PublicKey/{pk_key1.pem,pub_key1.pem}`.
+Implement the RSA public-key feature behind the FROZEN `Enigma.Core.Asymmetric.PublicKey` contract, porting the working behavior and tests at MAXIMUM FIDELITY while keeping BouncyCastle entirely internal (never in a public signature, base type, thrown-type-in-signature, or public support member). Deliver working `EncryptPkcs1`/`DecryptPkcs1`, `EncryptOaep`/`DecryptOaep(RsaOaepHash)`, `Sign`/`Verify(RsaSignatureAlgorithm)` over PEM-string keys with a clearable `char[]?` passphrase, the parameterless `CreatePublicKeyService()` factory, and — per user validation 2026-07-21 — the RESTORED `GenerateRsaKeyPair` returning PEM strings.
 
 ## Scope & mapping
 

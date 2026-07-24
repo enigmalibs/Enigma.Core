@@ -16,21 +16,21 @@ final feature before publishing; the base roadmap is otherwise `DONE`.
 
 - **Evolution of an existing codebase.** Enigma.Core is a re-architected .NET cryptography library
   (service + factory + DI, BouncyCastle-backed) at `https://github.com/enigmalibs/Enigma.Core`
-  (org `enigmalibs`, distinct from Enigma.Cryptography's `josueclement`).
+  (org `enigmalibs`).
 - Library multi-targets `netstandard2.0;net8.0;net10.0` — **already the correct LTS + netstandard
   set; no TFM change this release** (nothing to log in a Compatibility note).
-- **Positioning: brand-new library.** README and release notes make **no reference** to
-  Enigma.Cryptography. First release notes describe the 1.0.0 feature set, not a migration.
+- **Positioning: brand-new library.** First release notes describe the 1.0.0 feature set, not a
+  migration.
 - Central Package Management (`Directory.Packages.props`); shared build defaults in
   `Directory.Build.props` (`Authors=Josué Clément`, `Copyright © 2026`, `LangVersion=14`,
   `Nullable=enable`, `TreatWarningsAsErrors=true`, `EnforceCodeStyleInBuild=true`).
 - Tests are MTP-native (`xunit.v3` + `coverlet.collector`, no `Microsoft.NET.Test.Sdk`).
-- Tag format: **bare `X.Y.Z`** (matches Enigma.Cryptography's existing tags; Enigma.Core has none).
+- Tag format: **bare `X.Y.Z`** (Enigma.Core has none yet).
 - Published/default branch for the runbook: **`main`**.
 
 ## Parity audit — completed during planning, accepted as-is (audit trail)
 
-A full category-by-category audit of Enigma.Cryptography (OLD library) vs. Enigma.Core (NEW)
+A full category-by-category audit of Enigma.Core
 confirmed **essentially complete functional/algorithmic parity**; Certificates is a **superset**.
 No cipher, mode, hash, KDF, encoding, OTP, RSA, PQC, padding scheme, or certificate operation is
 missing. Verdicts: Block ciphers (12 engines, ECB/CBC/CTR/GCM+AAD) = PARITY; Stream ciphers
@@ -57,7 +57,7 @@ re-architecture choices (no work to do):**
 | Decision | Choice |
 |----------|--------|
 | First version | `1.0.0` |
-| Positioning | Brand-new library; no reference to Enigma.Cryptography |
+| Positioning | Brand-new library |
 | Parity deltas | Accept all three as intentional; release as-is |
 | README → docs linking | **Prose mention only** — no per-sample links, no absolute GitHub URLs, no nuget-breaking relative links |
 | Docs content | Guide + copy-pasteable code samples per category |
@@ -93,7 +93,7 @@ verify licensing.
    - `<Title>Enigma.Core — .NET Cryptography Library</Title>`
    - `<Description>` — a fresh one-paragraph summary of the feature set (block & stream ciphers,
      RSA, PQC (ML-DSA/ML-KEM), X.509 certificates, hashing, HMAC, OTP, KDF (PBKDF2/Argon2), padding,
-     data encoding), built on BouncyCastle. **No mention of Enigma.Cryptography.**
+     data encoding), built on BouncyCastle.
    - `<PackageTags>` — e.g. `enigma cryptography bouncycastle aes chacha20 salsa20 rsa pqc ml-dsa
      ml-kem x509 certificate csr pfx sha hash hmac otp hotp totp base32 pbkdf2 argon2 encryption
      signing dotnet`
@@ -191,7 +191,7 @@ then the owner re-verifies all snippets against the source before declaring the 
 1. `README.md` (root; packed into the nupkg):
    - Title `# Enigma.Core`.
    - Badges: NuGet version, Downloads, License (MIT → `LICENSE.md`).
-   - One-paragraph intro (brand-new library; built on BouncyCastle). No Enigma.Cryptography mention.
+   - One-paragraph intro (brand-new library; built on BouncyCastle).
    - `> **What's new in 1.0** — …` callout → `RELEASENOTES.md`.
    - **Features** — bulleted summary grouped by category (block ciphers, stream ciphers, public-key,
      PQC, X.509, hashing, HMAC, OTP, KDF, padding, encoding).
@@ -208,7 +208,7 @@ then the owner re-verifies all snippets against the source before declaring the 
    `See RELEASENOTES.md for the full details.`
 4. `SECURITY.md` — supported versions + responsible disclosure via **GitHub private vulnerability
    reporting** (Security tab → Report a vulnerability); note the crypto-library sensitivity.
-5. `CLAUDE.md` — repo guide adapted from Enigma.Cryptography's: architecture (service + factory + DI,
+5. `CLAUDE.md` — repo guide: architecture (service + factory + DI,
    BouncyCastle-backed, public surface free of BouncyCastle types), layout, target frameworks,
    build/test commands (`dotnet build`/`dotnet test`, MTP + xunit.v3), and the dev-workflow
    conventions. Describes Enigma.Core specifically.

@@ -5,7 +5,7 @@ using Xunit;
 namespace Enigma.Core.UnitTests.Pqc;
 
 /// <summary>
-/// Fixed-vector verification for ML-DSA-87 against pinned material ported from Enigma.Cryptography: the raw
+/// Fixed-vector verification for ML-DSA-87 against pinned material: the raw
 /// FIPS 204 public keys (<c>dsa87_A_public.key</c> / <c>dsa87_B_public.key</c>, regenerated from the legacy PEM
 /// fixtures as raw key bytes), the signed <c>message.txt</c> and the <c>signature.bin</c> produced against key A.
 /// The signature must verify true under key A and false under the unrelated key B (acceptance criterion 4).

@@ -4,20 +4,10 @@
 - **Type:** FEATURE (single-phase)
 - **Depends on:** FEATURE-26A5 (hashing — PRF/HMAC alignment + shared harness); transitively FEATURE-61D1
 - **Suggested branch (at build):** `feature/feature-679f-keyderivation`
-- **Basis:** ported from Enigma.Cryptography v5.0.0 (`/home/jo/Dev/Enigma.Cryptography`); redesign decisions validated by user 2026-07-21.
+- **Basis:** redesign decisions validated by user 2026-07-21.
 
 ## Objective
-Implement the two in-memory key-derivation services behind the FROZEN `Enigma.Core.KeyDerivation` contract by porting the working logic from Enigma.Cryptography v5.0.0 `KDF/`, keeping BouncyCastle strictly internal. Fill the four sealed stubs (`Pbkdf2Service`, `Pbkdf2ServiceFactory`, `Argon2Service`, `Argon2ServiceFactory`), AMEND the frozen `Pbkdf2Prf` enum to restore `HmacSha384` (the one dropped capability for this feature, restored per the maximum-fidelity directive), and port the test vectors to the new API.
-
-## Basis — port from Enigma.Cryptography v5.0.0
-Exact old source files (from the spec's oldToNewMapping):
-- `src/Enigma.Cryptography/KDF/IPbkdf2Service.cs`, `src/Enigma.Cryptography/KDF/Pbkdf2Service.cs`
-- `src/Enigma.Cryptography/KDF/IPbkdf2ServiceFactory.cs`, `src/Enigma.Cryptography/KDF/Pbkdf2ServiceFactory.cs`
-- `src/Enigma.Cryptography/KDF/Pbkdf2Prf.cs`
-- `src/Enigma.Cryptography/KDF/IArgon2Service.cs`, `src/Enigma.Cryptography/KDF/Argon2Service.cs`
-- `src/Enigma.Cryptography/KDF/IArgon2ServiceFactory.cs`, `src/Enigma.Cryptography/KDF/Argon2ServiceFactory.cs`
-- `src/Enigma.Cryptography/KDF/Argon2Variant.cs`, `src/Enigma.Cryptography/KDF/Argon2Version.cs`
-- Tests: `src/UnitTests/KDF/Pbkdf2ServiceTests.cs`, `src/UnitTests/KDF/Argon2IdTests.cs`, `src/UnitTests/KDF/pbkdf2.csv`, `src/UnitTests/Infrastructure/CsvData.cs`
+Implement the two in-memory key-derivation services behind the FROZEN `Enigma.Core.KeyDerivation` contract by porting the working logic, keeping BouncyCastle strictly internal. Fill the four sealed stubs (`Pbkdf2Service`, `Pbkdf2ServiceFactory`, `Argon2Service`, `Argon2ServiceFactory`), AMEND the frozen `Pbkdf2Prf` enum to restore `HmacSha384` (the one dropped capability for this feature, restored per the maximum-fidelity directive), and port the test vectors to the new API.
 
 ## Scope & mapping
 | Old | New home | Disposition | Note |

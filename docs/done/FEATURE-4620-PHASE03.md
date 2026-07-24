@@ -31,7 +31,7 @@ three TFMs, the test suite re-run, and the pack re-verified to embed the now-non
 
 - `README.md` — replaced the PHASE01 placeholder with the summary README: title, three badges
   (NuGet version, Downloads, License → `LICENSE.md`), one-paragraph intro (brand-new library on
-  BouncyCastle; no Enigma.Cryptography mention), a `> **What's new in 1.0**` callout →
+  BouncyCastle), a `> **What's new in 1.0**` callout →
   `RELEASENOTES.md`, a Features list grouped by category, an async/progress/cancellation note,
   Installation (`dotnet add package Enigma.Core`) + supported-TFMs line, a short verified Quick-start
   snippet, and a **prose-only** Documentation section pointing to `docs/guides/`.

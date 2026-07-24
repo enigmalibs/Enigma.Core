@@ -4,21 +4,10 @@
 - **Type:** FEATURE (single-phase)
 - **Depends on:** FEATURE-61D1 (foundation — package ref; verify BC 2.6.2 ML-DSA/ML-KEM across all 3 TFMs)
 - **Suggested branch (at build):** `feature/feature-0d6d-pqc`
-- **Basis:** ported from Enigma.Cryptography v5.0.0 (`/home/jo/Dev/Enigma.Cryptography`); redesign decisions validated by user 2026-07-21.
+- **Basis:** redesign decisions validated by user 2026-07-21.
 
 ## Objective
-Implement the post-quantum cryptography module — ML-DSA (FIPS 204 signatures) and ML-KEM (FIPS 203 key encapsulation) — behind the FEATURE-4442 frozen contract in `Enigma.Core.Asymmetric.Pqc`, at MAXIMUM FIDELITY to Enigma.Cryptography v5.0.0. Every capability the skeleton dropped is restored (notably ML-DSA deterministic signing), while BouncyCastle stays entirely internal: all keys, signatures and ciphertexts cross the public API as raw `byte[]` in their FIPS 204/203 encoding.
-
-## Basis — port from Enigma.Cryptography v5.0.0
-Old source files (from the spec's oldToNewMapping):
-- `src/Enigma.Cryptography/PQC/IMLDsaService.cs`, `PQC/MLDsaService.cs`
-- `src/Enigma.Cryptography/PQC/IMLDsaServiceFactory.cs`, `PQC/MLDsaServiceFactory.cs`
-- `src/Enigma.Cryptography/PQC/IMLKemService.cs`, `PQC/MLKemService.cs`
-- `src/Enigma.Cryptography/PQC/IMLKemServiceFactory.cs`, `PQC/MLKemServiceFactory.cs`
-
-Old tests + vectors to port/adapt:
-- `src/UnitTests/PQC/MLDsaTests.cs`, `MLDsaKeyPairTests.cs`, `MLKemTests.cs`, `MLKemKeyPairTests.cs`
-- Fixtures: `dsa87_A_public.pem`, `dsa87_A_private.pem`, `dsa87_B_public.pem`, `dsa87_B_private.pem`, `message.txt`, `signature.bin` (ML-DSA-87); `kem1024_A_public.pem`, `kem1024_A_private.pem`, `kem1024_B_public.pem`, `kem1024_B_private.pem`, `encapsulation.bin`, `secret.bin` (ML-KEM-1024).
+Implement the post-quantum cryptography module — ML-DSA (FIPS 204 signatures) and ML-KEM (FIPS 203 key encapsulation) — behind the FEATURE-4442 frozen contract in `Enigma.Core.Asymmetric.Pqc`, at MAXIMUM FIDELITY. Every capability the skeleton dropped is restored (notably ML-DSA deterministic signing), while BouncyCastle stays entirely internal: all keys, signatures and ciphertexts cross the public API as raw `byte[]` in their FIPS 204/203 encoding.
 
 ## Scope & mapping
 | Old | New home | Redesign / disposition |

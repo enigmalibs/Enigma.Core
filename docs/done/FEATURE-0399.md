@@ -3,12 +3,11 @@
 - **Status:** DONE
 - **Type:** FEATURE (single-phase)
 - **Branch:** `feature/feature-0399-encoding` (cut from `feature/feature-61d1-foundation` @ `8226112`)
-- **Basis:** ported from Enigma.Cryptography v5.0.0 (`/home/jo/Dev/Enigma.Cryptography`), `DataEncoding` module.
+- **Scope:** `DataEncoding` module.
 
 ## Summary
 Implemented the three textual encoders behind the frozen `Enigma.Core.Encoding` contract, replacing
-the FEATURE-4442 `NotImplementedException` stubs with the working behavior ported verbatim from
-Enigma.Cryptography v5.0.0:
+the FEATURE-4442 `NotImplementedException` stubs with the working behavior:
 
 1. **`Base64Service`** — delegates to `Org.BouncyCastle.Utilities.Encoders.Base64` (internal only):
    canonical padded encode; whitespace-tolerant decode.

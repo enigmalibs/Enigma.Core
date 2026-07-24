@@ -4,32 +4,15 @@
 - **Type:** FEATURE (single-phase)
 - **Depends on:** FEATURE-4442 (abstraction skeleton — DONE); first implementation feature
 - **Suggested branch (at build):** `feature/feature-61d1-foundation`
-- **Basis:** ported from Enigma.Cryptography v5.0.0 (`/home/jo/Dev/Enigma.Cryptography`); redesign decisions validated by user 2026-07-21.
+- **Basis:** redesign decisions validated by user 2026-07-21.
 
 ## Objective
 Make Enigma.Core buildable and testable against the frozen FEATURE-4442 skeleton and provide the shared, BouncyCastle-free plumbing every downstream crypto module needs. Concretely: (1) add the `BouncyCastle.Cryptography` + `System.Buffers` package references to the library (this is the reference that unblocks every later restoration — RSA core, PFX/PKCS#12, OTP RFC parity, configurable SHA-3, GCM AAD, PQC raw-byte keys); (2) multi-target the test project so `net8.0` is exercised alongside `net10.0`, add `coverlet.collector`, and stand up the CSV test-vector harness (`CsvData` + `SyncProgress<T>`); (3) port the genuinely shared support code — `Extensions/StreamExtensions.*`, `Extensions/StreamReadHelpers` (internal), `Extensions/EncodingExtensions`, and `Utils/RandomUtils`. No algorithm logic ships here and no BouncyCastle type appears in any public signature, base type, thrown-in-signature type, or public support member.
 
-## Basis — port from Enigma.Cryptography v5.0.0
-Exact old source files (from the spec's `oldToNewMapping`):
-- `src/Enigma.Cryptography/Extensions/StreamExtensions.Bool.cs`
-- `src/Enigma.Cryptography/Extensions/StreamExtensions.Bytes.cs`
-- `src/Enigma.Cryptography/Extensions/StreamExtensions.Int16.cs`
-- `src/Enigma.Cryptography/Extensions/StreamExtensions.Int32.cs`
-- `src/Enigma.Cryptography/Extensions/StreamExtensions.Int64.cs`
-- `src/Enigma.Cryptography/Extensions/StreamExtensions.Float.cs`
-- `src/Enigma.Cryptography/Extensions/StreamExtensions.Double.cs`
-- `src/Enigma.Cryptography/Extensions/StreamExtensions.LengthValue.cs`
-- `src/Enigma.Cryptography/Extensions/StreamExtensions.TagLengthValue.cs`
-- `src/Enigma.Cryptography/Extensions/StreamReadHelpers.cs` (internal)
-- `src/Enigma.Cryptography/Extensions/EncodingExtensions.cs`
-- `src/Enigma.Cryptography/Utils/RandomUtils.cs`
-- Test harness: `UnitTests/Infrastructure/CsvData.cs`, `UnitTests/Infrastructure/ProgressAndCancellationTests.cs` (the reusable `SyncProgress<T>` helper only), `UnitTests/Extensions/*Tests.cs`
-- Reference-only, NOT ported here: `Utils/PemUtils.cs`, `Utils/X509Utils.cs`, `CryptoDefaults.cs` (already ported PHASE01), `SignatureAlgorithms.cs` (superseded by `RsaSignatureAlgorithm`, PHASE01), `UnitTests/Validation/*`.
-
 ## Scope & mapping
 | Old file | New home / verdict | Note |
 |----------|--------------------|------|
-| `Extensions/StreamExtensions.Bool.cs` | `src/Enigma.Core/Extensions/StreamExtensions.Bool.cs` — un-defer, **public** | `WriteBool/ReadBool` + async; ns `Enigma.Cryptography.Extensions` → `Enigma.Core.Extensions`; BC-free, test-only consumers |
+| `Extensions/StreamExtensions.Bool.cs` | `src/Enigma.Core/Extensions/StreamExtensions.Bool.cs` — un-defer, **public** | `WriteBool/ReadBool` + async; namespace `Enigma.Core.Extensions`; BC-free, test-only consumers |
 | `Extensions/StreamExtensions.Bytes.cs` | `src/Enigma.Core/Extensions/StreamExtensions.Bytes.cs` — un-defer, **public** | `WriteByteAsync/ReadByteAsync/WriteBytes/ReadBytes` + async; sync `WriteByte/ReadByte` intentionally omitted (Stream instance methods shadow them) — keep that note |
 | `Extensions/StreamExtensions.Int16.cs` | `src/Enigma.Core/Extensions/StreamExtensions.Int16.cs` — un-defer, **public** | `WriteShort/ReadShort/WriteUShort/ReadUShort` (little-endian) + async; UShort used by TagLengthValue |
 | `Extensions/StreamExtensions.Int32.cs` | `src/Enigma.Core/Extensions/StreamExtensions.Int32.cs` — un-defer, **public** | `WriteInt/ReadInt/WriteUInt/ReadUInt` (little-endian) + async; used by LengthValue |

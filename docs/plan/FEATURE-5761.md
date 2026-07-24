@@ -4,22 +4,10 @@
 - **Type:** FEATURE (multi-phase — 2 phases)
 - **Depends on:** FEATURE-26A5 (hashing — HMAC), FEATURE-0399 (encoding — Base32 provisioning), FEATURE-61D1 (foundation — RandomUtils)
 - **Suggested branch (at build):** `feature/feature-5761-phaseNN-otp` (one branch per phase)
-- **Basis:** ported from Enigma.Cryptography v5.0.0 (`/home/jo/Dev/Enigma.Cryptography`); redesign decisions validated by user 2026-07-21.
+- **Basis:** redesign decisions validated by user 2026-07-21.
 
 ## Objective
-Port HOTP (RFC 4226) and TOTP (RFC 6238) generation/verification, their factories, the `OtpHashAlgorithm` enum, and the deferred `OtpProvisioning` + `OtpAuthParameters` types from Enigma.Cryptography v5.0.0 into `Enigma.Core.Otp`, behind the FEATURE-4442 frozen contract that hides BouncyCastle. Per the authoritative user decision (2026-07-21) this feature targets **FULL RFC PARITY**: every capability the frozen surface dropped is **restored** — the HOTP look-ahead resync window + matched-counter reporting, TOTP matched-step reporting, `GetRemainingSeconds`, and a current-time convenience overload — while all BouncyCastle types stay strictly internal. The frozen skeleton is AMENDED (BC-free) to carry the restored members, and the deferred provisioning types are un-deferred as a DI service.
-
-## Basis — port from Enigma.Cryptography v5.0.0
-Exact old source files (from the spec's oldToNewMapping):
-- `src/Enigma.Cryptography/Otp/OtpHashAlgorithm.cs` — already ported verbatim in PHASE04; confirm parity.
-- `src/Enigma.Cryptography/Otp/IHotpService.cs`, `src/Enigma.Cryptography/Otp/HotpService.cs`
-- `src/Enigma.Cryptography/Otp/IHotpServiceFactory.cs`, `src/Enigma.Cryptography/Otp/HotpServiceFactory.cs`
-- `src/Enigma.Cryptography/Otp/ITotpService.cs`, `src/Enigma.Cryptography/Otp/TotpService.cs`
-- `src/Enigma.Cryptography/Otp/ITotpServiceFactory.cs`, `src/Enigma.Cryptography/Otp/TotpServiceFactory.cs`
-- `src/Enigma.Cryptography/Otp/OtpProvisioning.cs` (deferred → un-defer)
-- `src/Enigma.Cryptography/Otp/OtpAuthParameters.cs` (deferred → un-defer)
-- `src/Enigma.Cryptography/Utils/RandomUtils.cs` (support type → foundation/un-defer)
-- Tests: `src/UnitTests/Otp/HotpTests.cs`, `TotpTests.cs`, `OtpProvisioningTests.cs`, `hotp.csv`, `totp.csv`; `src/UnitTests/Infrastructure/CsvData.cs`.
+Port HOTP (RFC 4226) and TOTP (RFC 6238) generation/verification, their factories, the `OtpHashAlgorithm` enum, and the deferred `OtpProvisioning` + `OtpAuthParameters` types into `Enigma.Core.Otp`, behind the FEATURE-4442 frozen contract that hides BouncyCastle. Per the authoritative user decision (2026-07-21) this feature targets **FULL RFC PARITY**: every capability the frozen surface dropped is **restored** — the HOTP look-ahead resync window + matched-counter reporting, TOTP matched-step reporting, `GetRemainingSeconds`, and a current-time convenience overload — while all BouncyCastle types stay strictly internal. The frozen skeleton is AMENDED (BC-free) to carry the restored members, and the deferred provisioning types are un-deferred as a DI service.
 
 ## Scope & mapping
 | Old | New home | Disposition | Note |

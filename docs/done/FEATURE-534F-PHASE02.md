@@ -3,7 +3,7 @@
 - **Status:** DONE
 - **Type:** FEATURE phase (2 of 3)
 - **Branch:** `feature/feature-534f-phase02-blockciphers` (cut from `feature/feature-534f-phase01-padding` @ `465e82e`)
-- **Basis:** ported from Enigma.Cryptography v5.0.0 (`/home/jo/Dev/Enigma.Cryptography`), `BlockCiphers` module.
+- **Scope:** `BlockCiphers` module.
 
 ## Summary
 Implemented the block-cipher subsystem behind the API frozen by FEATURE-4442 PHASE02, ported at maximum

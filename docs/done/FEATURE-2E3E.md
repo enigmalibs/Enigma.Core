@@ -3,7 +3,7 @@
 ## Summary
 
 Implemented the RSA public-key feature behind the frozen `Enigma.Core.Asymmetric.PublicKey` contract,
-porting the behavior and tests of Enigma.Cryptography v5.0.0 while keeping BouncyCastle entirely internal
+porting the behavior and tests while keeping BouncyCastle entirely internal
 (no BC type on any public signature, return, parameter, base type or exposed member — proven by a reflection
 guard). Delivered `EncryptPkcs1`/`DecryptPkcs1`, `EncryptOaep`/`DecryptOaep(RsaOaepHash)`,
 `Sign`/`Verify(RsaSignatureAlgorithm)` over PEM-string keys with a clearable `char[]?` passphrase, the

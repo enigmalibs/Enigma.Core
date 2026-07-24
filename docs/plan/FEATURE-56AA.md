@@ -10,8 +10,7 @@ and all later feature work have a clean, buildable, convention-compliant home. T
 **infrastructure only** — no library code beyond an empty `Enigma.Core` project and a single smoke test.
 
 ## Context
-New repository migrating from `Enigma.Cryptography` (v5.0.0, at `/home/jo/Dev/Enigma.Cryptography`).
-Clean break: new package id, redesigned API (see FEATURE-4442), **no** backward-compat shim.
+New repository. Clean break: new package id, redesigned API (see FEATURE-4442), **no** backward-compat shim.
 House conventions: `dotnet-solution-setup`, `dotnet-solution-config`, `xunit-v3`, `dev-workflow`,
 `git-repo-hygiene`.
 

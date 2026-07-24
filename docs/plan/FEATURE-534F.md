@@ -4,23 +4,10 @@
 - **Type:** FEATURE (multi-phase — 3 phases)
 - **Depends on:** FEATURE-61D1 (foundation — stream Extensions + package ref + harness)
 - **Suggested branch (at build):** `feature/feature-534f-phaseNN-symmetric` (one branch per phase)
-- **Basis:** ported from Enigma.Cryptography v5.0.0 (`/home/jo/Dev/Enigma.Cryptography`); redesign decisions validated by user 2026-07-21.
+- **Basis:** redesign decisions validated by user 2026-07-21.
 
 ## Objective
-Port the working symmetric-cipher and padding implementations from Enigma.Cryptography v5.0.0 into Enigma.Core behind the FEATURE-4442 frozen, BouncyCastle-free contracts, at **maximum fidelity** to v5.0.0. Fill the `BlockCipherService`/`BlockCipherServiceFactory`, `StreamCipherService`/`StreamCipherServiceFactory`, and `PaddingService`/`NoPaddingService`/`PaddingServiceFactory` stubs so every member works, keeping every BouncyCastle type strictly **internal** (never in a public signature, base type, thrown-type-in-signature, or public support member). Re-introduce, as **internal** types, the low-level engine/padding/parameters wiring that FEATURE-4442 dropped from the public API — the implementation still needs those seams. Restore the one dropped capability that touches the public surface — GCM associated data (AAD) — by amending the frozen contract.
-
-## Basis — port from Enigma.Cryptography v5.0.0
-Cited from the spec `oldToNewMapping`:
-- `BlockCiphers/IBlockCipherService.cs`, `BlockCiphers/BlockCipherService.cs`
-- `BlockCiphers/IBlockCipherServiceFactory.cs`, `BlockCiphers/BlockCipherServiceFactory.cs`
-- `BlockCiphers/GcmMacSize.cs`
-- `BlockCiphers/IBlockCipherEngineFactory.cs` + `BlockCipherEngineFactory.cs` (→ INTERNAL)
-- `BlockCiphers/IBlockCipherPaddingFactory.cs` + `BlockCipherPaddingFactory.cs` (→ INTERNAL)
-- `BlockCiphers/IBlockCipherParametersFactory.cs` + `BlockCipherParametersFactory.cs` (→ INTERNAL)
-- `StreamCiphers/IStreamCipherService.cs`, `StreamCiphers/StreamCipherService.cs`, `StreamCiphers/IStreamCipherServiceFactory.cs`, `StreamCiphers/StreamCipherServiceFactory.cs`
-- `Padding/IPaddingService.cs`, `Padding/PaddingService.cs`, `Padding/NoPaddingService.cs`, `Padding/IPaddingServiceFactory.cs`, `Padding/PaddingServiceFactory.cs`
-- `Utils/RandomUtils.cs` (internal random source only)
-- Tests + CSV vectors under `UnitTests/BlockCiphers`, `UnitTests/StreamCiphers`, `UnitTests/Padding`, and `UnitTests/Infrastructure/{CsvData.cs, ProgressAndCancellationTests.cs}`
+Port the working symmetric-cipher and padding implementations into Enigma.Core behind the FEATURE-4442 frozen, BouncyCastle-free contracts, at **maximum fidelity** to v5.0.0. Fill the `BlockCipherService`/`BlockCipherServiceFactory`, `StreamCipherService`/`StreamCipherServiceFactory`, and `PaddingService`/`NoPaddingService`/`PaddingServiceFactory` stubs so every member works, keeping every BouncyCastle type strictly **internal** (never in a public signature, base type, thrown-type-in-signature, or public support member). Re-introduce, as **internal** types, the low-level engine/padding/parameters wiring that FEATURE-4442 dropped from the public API — the implementation still needs those seams. Restore the one dropped capability that touches the public surface — GCM associated data (AAD) — by amending the frozen contract.
 
 ## Scope & mapping
 | Old | New home | Disposition | Note |

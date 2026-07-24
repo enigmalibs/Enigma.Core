@@ -2,8 +2,8 @@
 
 ## Summary
 Implemented the post-quantum module behind the FEATURE-4442 frozen contract in
-`Enigma.Core.Asymmetric.Pqc`: ML-DSA (FIPS 204 signatures) and ML-KEM (FIPS 203 key encapsulation),
-ported from Enigma.Cryptography v5.0.0 at full fidelity. BouncyCastle 2.6.2 backs every operation but
+`Enigma.Core.Asymmetric.Pqc`: ML-DSA (FIPS 204 signatures) and ML-KEM (FIPS 203 key encapsulation).
+BouncyCastle 2.6.2 backs every operation but
 stays entirely internal — all keys, signatures, ciphertexts and shared secrets cross the public API as
 raw `byte[]` in their FIPS 204/203 encoding. The dropped ML-DSA **deterministic signing** capability is
 restored via the approved contract amendment (a trailing optional `bool deterministic = false` on the
