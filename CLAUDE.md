@@ -22,7 +22,7 @@ The whole library follows one pattern: **service + factory + DI**.
   container. Most factories are parameterless; a few compose others via constructor injection
   (`HotpServiceFactory(IHmacServiceFactory)`, `TotpServiceFactory(IHotpServiceFactory)`,
   `OtpProvisioningServiceFactory(IEncodingServiceFactory)`).
-- There is deliberately **no** `AddEnigmaCore` DI-registration helper in 1.0.0.
+- There is deliberately **no** `AddEnigmaCore` DI-registration helper.
 
 **Load-bearing invariant — BouncyCastle never leaks onto the public surface.** BouncyCastle backs
 every implementation, but no `Org.BouncyCastle.*` type may appear on any exported type or member.
@@ -65,7 +65,7 @@ docs/                                Guides, samples, and the dev-workflow track
 ## Target frameworks & dependencies
 
 - Multi-targets **`netstandard2.0;net8.0;net10.0`**.
-- Runtime dependency: **BouncyCastle.Cryptography 2.6.2** (all TFMs).
+- Runtime dependency: **BouncyCastle.Cryptography 2.7.0** (all TFMs).
 - `System.Buffers` (Span/Memory support) and **PolySharp** (compile-only C# polyfills,
   `PrivateAssets=all`) are referenced on **netstandard2.0 only**; both are framework-provided or
   unnecessary on net8.0+.

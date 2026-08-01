@@ -91,6 +91,23 @@ public class RsaArgumentValidationTests(RsaKeyFixture keys)
     }
 
     [Fact]
+    public void PrivateKeyOperation_UnsupportedDekAlgorithm_ThrowsArgumentException()
+    {
+        // Characterization, not a design statement: an unrecognised DEK-Info cipher makes BouncyCastle raise
+        // EncryptionException, which PemUtils does not catch explicitly — it falls through to catch (IOException)
+        // and surfaces as ArgumentException("malformed"). That is the intended reading (an unknown cipher header
+        // is a structural PEM defect, not a failed decryption), and this test pins it so a future BouncyCastle
+        // change to that path shows up red instead of silently altering the exception a caller sees.
+        var service = Service();
+        var (_, encryptedPrivatePem) = service.GenerateRsaKeyPair(2048, "correct-password".ToCharArray());
+        var bogusDekPem = encryptedPrivatePem.Replace("DEK-Info: AES-256-CBC", "DEK-Info: NOT-A-REAL-CIPHER");
+
+        Assert.NotEqual(encryptedPrivatePem, bogusDekPem);
+        Assert.Throws<ArgumentException>(
+            () => service.Sign(SomeData, bogusDekPem, password: "correct-password".ToCharArray()));
+    }
+
+    [Fact]
     public void PrivateKeyOperation_UnencryptedPemWithNullPassword_Succeeds()
     {
         // The shared fixture's private key is unencrypted; a null password must be accepted.

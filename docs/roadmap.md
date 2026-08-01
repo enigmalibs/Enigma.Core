@@ -36,6 +36,6 @@ records in `docs/done/<ID>.md`. Row order is the work order (append new items la
 | - PHASE03 | Summary README + release notes + community files | DONE | (in FEATURE-4620.md) |
 | - PHASE04 | Release runbook & final cut prep | DONE | (in FEATURE-4620.md) |
 | FEATURE-28C7 | Release-doc polish: drop Downloads badge & verify guide/README samples | DONE | docs/plan/FEATURE-28C7.md |
-| FEATURE-797D | BouncyCastle 2.7.0 upgrade & v1.1.0 release | TODO | docs/plan/FEATURE-797D.md |
-| - PHASE01 | Upgrade to BouncyCastle 2.7.0 | TODO | (in FEATURE-797D.md) |
-| - PHASE02 | Release v1.1.0 | TODO | (in FEATURE-797D.md) |
+| FEATURE-797D | BouncyCastle 2.7.0 upgrade & v1.1.0 release | DONE | docs/plan/FEATURE-797D.md |
+| - PHASE01 | Upgrade to BouncyCastle 2.7.0 | DONE | (in FEATURE-797D.md) |
+| - PHASE02 | Release v1.1.0 | DONE | (in FEATURE-797D.md) |

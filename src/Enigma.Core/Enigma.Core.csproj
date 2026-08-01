@@ -3,7 +3,7 @@
     <OutputType>Library</OutputType>
     <TargetFrameworks>netstandard2.0;net8.0;net10.0</TargetFrameworks>
     <PackageId>Enigma.Core</PackageId>
-    <Version>1.0.0</Version>
+    <Version>1.1.0</Version>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <Title>Enigma.Core — .NET Cryptography Library</Title>
     <Description>A modern, service- and factory-oriented .NET cryptography library built on BouncyCastle, designed for dependency injection. Provides block ciphers (AES, DES, 3DES, Blowfish, Twofish, Serpent, Camellia, CAST5, IDEA, SEED, ARIA, SM4) with ECB/CBC/CTR/GCM (incl. AAD) modes, stream ciphers (ChaCha20, ChaCha20-RFC7539, Salsa20), RSA (PKCS#1 v1.5 &amp; OAEP encryption, signing, PEM), post-quantum cryptography (ML-DSA and ML-KEM), X.509 certificates (generation, CSR, issuance, chain validation, CRL revocation, PKCS#12/DER import-export), hashing (MD5, SHA-1, SHA-256, SHA-512, SHA-3), HMAC, one-time passwords (HOTP/TOTP with otpauth provisioning), key derivation (PBKDF2, Argon2), padding schemes, and data encoding (Base64, Base32, Hex).</Description>
@@ -13,7 +13,7 @@
     <RepositoryUrl>https://github.com/enigmalibs/Enigma.Core</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageProjectUrl>https://github.com/enigmalibs/Enigma.Core</PackageProjectUrl>
-    <PackageReleaseNotes>First public release of Enigma.Core: a DI-friendly, BouncyCastle-backed cryptography surface covering block &amp; stream ciphers (ECB/CBC/CTR/GCM), RSA, post-quantum ML-DSA/ML-KEM, X.509 certificates, hashing, HMAC, OTP (HOTP/TOTP), key derivation (PBKDF2/Argon2), padding, and data encoding. Targets netstandard2.0/net8.0/net10.0. See RELEASENOTES.md for the full details.</PackageReleaseNotes>
+    <PackageReleaseNotes>Dependency release: Enigma.Core now builds on BouncyCastle.Cryptography 2.7.0 (up from 2.6.2), which raises the minimum BouncyCastle version — consumers pinned to 2.6.x must upgrade. The public API and its behaviour are unchanged, and ML-KEM/ML-DSA key, ciphertext and signature encodings are identical, so material persisted by 1.0.0 keeps working. Still targets netstandard2.0/net8.0/net10.0. See RELEASENOTES.md for the full details.</PackageReleaseNotes>
   </PropertyGroup>
   <!-- Package README and LICENSE files, packed at the nupkg root. Paths are relative to this csproj
        at src/Enigma.Core/; PackageReadmeFile/PackageLicenseFile above reference them by file name. -->
