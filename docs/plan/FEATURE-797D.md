@@ -1,6 +1,6 @@
 # FEATURE-797D — BouncyCastle 2.7.0 upgrade & v1.1.0 release
 
-**Status:** TODO (multi-phase)
+**Status:** IN PROGRESS (multi-phase)
 **Type:** FEATURE (multi-phase)
 **Branch (per phase, at build time):** `feature/feature-797d-phaseNN-<slug>` — one branch per phase, cut from current `HEAD`.
 
@@ -108,7 +108,7 @@ Standard `dev-workflow` DoD:
 
 ## PHASE01 — Upgrade to BouncyCastle 2.7.0
 
-**Status:** TODO
+**Status:** DONE
 **Branch:** `feature/feature-797d-phase01-bouncycastle-270`
 
 ### Scope

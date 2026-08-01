@@ -5,13 +5,13 @@
   <!-- Core library. BouncyCastle/System.Buffers are referenced by the real implementation
        features later, NOT at skeleton stage. -->
   <ItemGroup>
-    <PackageVersion Include="BouncyCastle.Cryptography" Version="2.6.2" />
+    <PackageVersion Include="BouncyCastle.Cryptography" Version="2.7.0" />
     <PackageVersion Include="System.Buffers" Version="4.6.1" />
     <PackageVersion Include="PolySharp" Version="1.16.0" />
   </ItemGroup>
   <!-- Tests (MTP-native: xunit.v3 only; coverlet.collector for coverage). No Microsoft.NET.Test.Sdk. -->
   <ItemGroup>
     <PackageVersion Include="xunit.v3" Version="3.2.2" />
-    <PackageVersion Include="coverlet.collector" Version="6.0.4" />
+    <PackageVersion Include="coverlet.collector" Version="10.0.1" />
   </ItemGroup>
 </Project>

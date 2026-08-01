@@ -138,7 +138,7 @@ public class CertificateInfoTests(CertificateKeyFixture keys)
         // values as opaque octets and decodes SAN lazily, so the certificate parses fine but decoding the SAN
         // throws — the internal extractor must swallow that and return an empty list, not surface it.
         var malformedSanValue = new DerSequence(
-            new DerTaggedObject(isExplicit: false, GeneralName.DnsName, new DerSequence(new DerInteger(1))));
+            new DerTaggedObject(isExplicit: false, GeneralName.DnsName, new DerSequence(DerInteger.ValueOf(1))));
         var certPem = BuildSelfSignedCertWithRawSan(keys.RootPrivateKeyPem, malformedSanValue);
 
         var info = keys.NewService().GetCertificateInfo(certPem);

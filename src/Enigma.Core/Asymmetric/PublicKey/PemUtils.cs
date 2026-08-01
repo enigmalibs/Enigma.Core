@@ -4,6 +4,9 @@ using System.Security.Cryptography;
 using Org.BouncyCastle.Crypto;
 using Org.BouncyCastle.OpenSsl;
 using Org.BouncyCastle.Security;
+// BouncyCastle 2.7.0 moved PasswordException into Org.BouncyCastle.OpenSsl; the Security namespace keeps an
+// [Obsolete] base of the same name, so the unqualified name is ambiguous across the two usings above.
+using PasswordException = Org.BouncyCastle.OpenSsl.PasswordException;
 
 namespace Enigma.Core.Asymmetric.PublicKey;
 
