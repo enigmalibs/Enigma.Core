@@ -1,3 +1,31 @@
+# Enigma.Core v1.1.0 Release Notes
+
+A dependency release: Enigma.Core now builds on **BouncyCastle.Cryptography 2.7.0**. No public API is
+added, removed, or changed, and the library's own behaviour is unchanged — the only consumer-visible
+effect is the raised BouncyCastle floor.
+
+## Dependencies
+
+- **BouncyCastle.Cryptography 2.6.2 → 2.7.0** (runtime dependency, all target frameworks).
+- `coverlet.collector` 6.0.4 → 10.0.1 — test-only, not redistributed as part of the package.
+
+## Compatibility
+
+- Target frameworks are unchanged: **.NET Standard 2.0**, **.NET 8.0**, and **.NET 10.0**.
+- The **minimum BouncyCastle.Cryptography version is now 2.7.0**. Consumers pinned to 2.6.x must
+  upgrade — 2.7.0 relocated `PasswordException` into `Org.BouncyCastle.OpenSsl`, and Enigma.Core
+  binds to that type, so the assembly will not load against an older BouncyCastle.
+- ML-KEM and ML-DSA key, ciphertext and signature encodings are **unchanged**, so keys, ciphertexts
+  and signatures persisted by 1.0.0 continue to work. This is verified by fixed-vector tests against
+  unmodified 1.0.0-era fixtures, plus encoding-contract tests that pin the exact FIPS 203 / FIPS 204
+  sizes for all six parameter sets.
+
+## Version
+
+- Release: **1.1.0**.
+
+---
+
 # Enigma.Core v1.0.0 Release Notes
 
 The first public release of **Enigma.Core** — a modern, service- and factory-oriented .NET
