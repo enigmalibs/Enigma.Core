@@ -8,9 +8,8 @@ algorithm is exposed through the same small pattern — create a factory, ask it
 need, call the operation — and the factory interfaces register cleanly in any dependency-injection
 container. BouncyCastle powers the implementations but never leaks onto the public surface.
 
-> **What's new in 1.0** — the first public release. A complete, DI-friendly cryptography surface:
-> symmetric and stream ciphers, RSA, post-quantum ML-DSA/ML-KEM, X.509 certificates, hashing, HMAC,
-> one-time passwords, key derivation, padding, and data encoding. See
+> **What's new in 1.1** — now built on BouncyCastle 2.7.0; the public API and its behaviour are
+> unchanged, and ML-KEM/ML-DSA encodings stay byte-compatible with 1.0.0. See
 > [RELEASENOTES.md](RELEASENOTES.md) for the full details.
 
 ## Features
@@ -44,7 +43,7 @@ large-payload work stays responsive.
 dotnet add package Enigma.Core
 ```
 
-Targets **.NET Standard 2.0**, **.NET 8.0**, and **.NET 10.0**; built on BouncyCastle 2.6.2.
+Targets **.NET Standard 2.0**, **.NET 8.0**, and **.NET 10.0**; built on BouncyCastle 2.7.0.
 
 ## Quick start
 

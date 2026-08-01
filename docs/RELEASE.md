@@ -60,7 +60,7 @@ dotnet pack src/Enigma.Core/Enigma.Core.csproj -c Release -o ./artifacts
 
 This writes `./artifacts/Enigma.Core.X.Y.Z.nupkg`. Confirm the version in the filename matches the tag, and
 (optionally) inspect the package contents — it should bundle `README.md` and `LICENSE.md` and declare the
-expected dependency floors (BouncyCastle.Cryptography 2.6.2; System.Buffers on netstandard2.0).
+expected dependency floors (BouncyCastle.Cryptography 2.7.0; System.Buffers on netstandard2.0).
 
 ## 5. Push to NuGet
 
