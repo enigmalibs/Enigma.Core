@@ -1,6 +1,6 @@
 # FEATURE-19C7 — Release v2.0.0
 
-**Status:** TODO (single-phase)
+**Status:** DONE (single-phase)
 **Type:** FEATURE
 **Branch (at build time):** `feature/feature-19c7-release-200` — cut from current `HEAD`.
 

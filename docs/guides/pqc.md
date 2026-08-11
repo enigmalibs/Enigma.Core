@@ -3,7 +3,10 @@
 Enigma.Core provides NIST-standardised post-quantum primitives through the same
 service + factory pattern as the rest of the library. You create a factory with
 `new`, ask it for a service at the security level you want, and get back a small,
-focused interface that works entirely in raw `byte[]` values.
+focused interface. The cryptographic operations work entirely in raw `byte[]`
+values; a separate PEM service per family serializes those keys to and from PEM
+text when you need to store or publish them — see
+[PEM serialization](#pem-serialization).
 
 Two algorithm families are covered, both built on module lattices and both
 believed to resist attacks by large-scale quantum computers:

@@ -8,9 +8,11 @@ algorithm is exposed through the same small pattern — create a factory, ask it
 need, call the operation — and the factory interfaces register cleanly in any dependency-injection
 container. BouncyCastle powers the implementations but never leaks onto the public surface.
 
-> **What's new in 1.1** — now built on BouncyCastle 2.7.0; the public API and its behaviour are
-> unchanged, and ML-KEM/ML-DSA encodings stay byte-compatible with 1.0.0. See
-> [RELEASENOTES.md](RELEASENOTES.md) for the full details.
+> **What's new in 2.0** — breaking: RSA key material now crosses the API as a reusable `RsaKey`
+> handle instead of PEM text, in both the public-key and certificate modules, with the passphrase
+> supplied once at import; new are ML-DSA/ML-KEM key PEM support and a CRC checksum module. Existing
+> key files still load — only the API changed. See [RELEASENOTES.md](RELEASENOTES.md) for the full
+> details.
 
 ## Features
 
