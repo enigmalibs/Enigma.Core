@@ -52,9 +52,10 @@ src/Enigma.Core/                     The library
   Encoding/                          Base64, Base32, Hex
   Otp/                               HOTP, TOTP, otpauth:// provisioning
   Asymmetric/PublicKey/              RSA (encryption, signing, PEM)
-  Asymmetric/Pqc/                    ML-KEM, ML-DSA
+  Asymmetric/Pqc/                    ML-KEM, ML-DSA (+ PEM serialization per family)
   Certificates/                      X.509 generation, CSR, issuance, chain validation, CRL, PKCS#12/DER, info
   Extensions/                        EncodingExtensions, StreamExtensions (typed sync/async stream I/O)
+  Internal/                          Cross-category internals (PemEnvelope: the one PEM/PBES2 implementation)
   Utils/                             RandomUtils, CryptoDefaults
 tests/Enigma.Core.UnitTests/         xUnit v3 test suite (mirrors the src category layout)
   Api/                               Public-surface guard tests (incl. BouncyCastleIsolationTests)
