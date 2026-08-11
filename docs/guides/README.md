@@ -45,6 +45,8 @@ usage samples** — and every snippet targets the real public API.
 ## Data & helpers
 
 - [Encoding](encoding.md) — Base64, Base32 (RFC 4648), hexadecimal.
+- [Checksums](checksum.md) — CRC-16 (ARC, CCITT-FALSE, XMODEM, MODBUS, KERMIT) and
+  CRC-32 (ISO-HDLC, CRC-32C). Error detection only — never a security primitive.
 - [Extensions](extensions.md) — `byte[]`/`string` encoding helpers and typed `Stream` read/write
   extensions.
 - [Utilities & defaults](utils.md) — `RandomUtils` secure random bytes and `CryptoDefaults`.

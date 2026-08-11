@@ -33,12 +33,15 @@ container. BouncyCastle powers the implementations but never leaks onto the publ
 - **One-time passwords** — HOTP (RFC 4226), TOTP (RFC 6238), and `otpauth://` provisioning URIs.
 - **Key derivation** — PBKDF2 (four PRFs) and Argon2 (Argon2d/i/id).
 - **Encoding** — Base64, Base32 (RFC 4648), and hexadecimal.
+- **Checksums** — CRC-16 (ARC, CCITT-FALSE, XMODEM, MODBUS, KERMIT) and CRC-32 (ISO-HDLC, CRC-32C),
+  as bytes or as a `uint`, over buffers or streams. Error detection only, in their own namespace so
+  a CRC can never stand in for a cryptographic digest.
 
 ### Asynchronous, cancellable, observable
 
-The streaming operations — block and stream ciphers, hashing, and HMAC — expose `async` APIs that
-accept an `IProgress<int>` for progress reporting and a `CancellationToken` for cancellation, so
-large-payload work stays responsive.
+The streaming operations — block and stream ciphers, hashing, HMAC, and checksums — expose `async`
+APIs that accept an `IProgress<int>` for progress reporting and a `CancellationToken` for
+cancellation, so large-payload work stays responsive.
 
 ## Installation
 

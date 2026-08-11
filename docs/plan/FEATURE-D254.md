@@ -1,6 +1,6 @@
 # FEATURE-D254 — Checksum module (CRC-16 & CRC-32)
 
-**Status:** TODO (single-phase)
+**Status:** DONE (single-phase) — completion record: `docs/done/FEATURE-D254.md`
 **Type:** FEATURE
 **Branch (at build time):** `feature/feature-d254-checksum-crc` — cut from current `HEAD`.
 

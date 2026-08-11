@@ -46,5 +46,5 @@ records in `docs/done/<ID>.md`. Row order is the work order (append new items la
 | - PHASE01    | RsaKey + PBES2 write / three-format read (additive)                           | DONE   | (in FEATURE-6852.md)      |
 | - PHASE02    | Cut the PEM-string surface (BREAKING)                                         | DONE   | (in FEATURE-6852.md)      |
 | FEATURE-57A9 | Certificates on the RsaKey handle (BREAKING)                                  | DONE   | docs/plan/FEATURE-57A9.md |
-| FEATURE-D254 | Checksum module (CRC-16 & CRC-32)                                             | TODO   | docs/plan/FEATURE-D254.md |
+| FEATURE-D254 | Checksum module (CRC-16 & CRC-32)                                             | DONE   | docs/plan/FEATURE-D254.md |
 | FEATURE-19C7 | Release v2.0.0                                                                | TODO   | docs/plan/FEATURE-19C7.md |
