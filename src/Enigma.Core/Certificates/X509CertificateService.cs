@@ -4,6 +4,7 @@ using System.Security.Cryptography;
 using Enigma.Core.Asymmetric.PublicKey;
 using Org.BouncyCastle.Crypto;
 using Org.BouncyCastle.Crypto.Operators;
+using Org.BouncyCastle.Crypto.Parameters;
 using Org.BouncyCastle.Pkcs;
 using Org.BouncyCastle.Pkix;
 using Org.BouncyCastle.Security;
@@ -18,7 +19,7 @@ namespace Enigma.Core.Certificates;
 /// BouncyCastle behind a PEM-string contract.
 /// </summary>
 /// <remarks>
-/// Certificates, CSRs and keys cross the API as PEM text and passphrases as <see cref="char"/> arrays, so no
+/// Certificates, CSRs and CRLs cross the API as PEM text and key material as <see cref="RsaKey"/> handles, so no
 /// BouncyCastle type appears on the public surface (principle 1). BouncyCastle parse/signing failures never
 /// escape: malformed input surfaces as <see cref="ArgumentException"/> and signing/decryption failures as
 /// <see cref="CryptographicException"/>.
@@ -28,13 +29,14 @@ public sealed class X509CertificateService : IX509CertificateService
     private readonly SecureRandom _random = new();
 
     /// <inheritdoc />
-    public string GenerateSelfSignedCertificate(string subjectDistinguishedName, string privateKeyPem, DateTimeOffset notBefore, DateTimeOffset notAfter, RsaSignatureAlgorithm signatureAlgorithm = RsaSignatureAlgorithm.Sha256WithRsa, char[]? password = null, X509CertificateOptions? options = null)
+    public string GenerateSelfSignedCertificate(string subjectDistinguishedName, RsaKey privateKey, DateTimeOffset notBefore, DateTimeOffset notAfter, RsaSignatureAlgorithm signatureAlgorithm = RsaSignatureAlgorithm.Sha256WithRsa, X509CertificateOptions? options = null)
     {
         if (subjectDistinguishedName is null) throw new ArgumentNullException(nameof(subjectDistinguishedName));
+        if (privateKey is null) throw new ArgumentNullException(nameof(privateKey));
 
         var subject = X509CertUtils.ParseDistinguishedName(subjectDistinguishedName, nameof(subjectDistinguishedName));
-        var privateKey = PemUtils.ParsePrivateKey(privateKeyPem, password);
-        var publicKey = X509CertUtils.DerivePublicKey(privateKey);
+        var signingKey = RequirePrivate(privateKey, nameof(privateKey));
+        var publicKey = X509CertUtils.DerivePublicKey(signingKey);
 
         var generator = new X509V3CertificateGenerator();
         generator.SetSerialNumber(X509CertUtils.GenerateSerialNumber(_random));
@@ -45,23 +47,24 @@ public sealed class X509CertificateService : IX509CertificateService
         generator.SetPublicKey(publicKey);
         X509CertUtils.ApplyExtensions(generator, options);
 
-        return X509CertUtils.WritePem(Sign(generator, signatureAlgorithm, privateKey));
+        return X509CertUtils.WritePem(Sign(generator, signatureAlgorithm, signingKey));
     }
 
     /// <inheritdoc />
-    public string GenerateCertificateSigningRequest(string subjectDistinguishedName, string privateKeyPem, RsaSignatureAlgorithm signatureAlgorithm = RsaSignatureAlgorithm.Sha256WithRsa, char[]? password = null)
+    public string GenerateCertificateSigningRequest(string subjectDistinguishedName, RsaKey privateKey, RsaSignatureAlgorithm signatureAlgorithm = RsaSignatureAlgorithm.Sha256WithRsa)
     {
         if (subjectDistinguishedName is null) throw new ArgumentNullException(nameof(subjectDistinguishedName));
+        if (privateKey is null) throw new ArgumentNullException(nameof(privateKey));
 
         var subject = X509CertUtils.ParseDistinguishedName(subjectDistinguishedName, nameof(subjectDistinguishedName));
-        var privateKey = PemUtils.ParsePrivateKey(privateKeyPem, password);
-        var publicKey = X509CertUtils.DerivePublicKey(privateKey);
+        var signingKey = RequirePrivate(privateKey, nameof(privateKey));
+        var publicKey = X509CertUtils.DerivePublicKey(signingKey);
 
         Pkcs10CertificationRequest csr;
         try
         {
             csr = new Pkcs10CertificationRequest(
-                SignatureAlgorithms.ToJcaName(signatureAlgorithm), subject, publicKey, attributes: null, privateKey);
+                SignatureAlgorithms.ToJcaName(signatureAlgorithm), subject, publicKey, attributes: null, signingKey);
         }
         catch (CryptoException ex)
         {
@@ -79,14 +82,16 @@ public sealed class X509CertificateService : IX509CertificateService
     }
 
     /// <inheritdoc />
-    public string IssueCertificate(string certificateSigningRequestPem, string issuerCertificatePem, string issuerPrivateKeyPem, DateTimeOffset notBefore, DateTimeOffset notAfter, RsaSignatureAlgorithm signatureAlgorithm = RsaSignatureAlgorithm.Sha256WithRsa, char[]? password = null, X509CertificateOptions? options = null)
+    public string IssueCertificate(string certificateSigningRequestPem, string issuerCertificatePem, RsaKey issuerPrivateKey, DateTimeOffset notBefore, DateTimeOffset notAfter, RsaSignatureAlgorithm signatureAlgorithm = RsaSignatureAlgorithm.Sha256WithRsa, X509CertificateOptions? options = null)
     {
+        if (issuerPrivateKey is null) throw new ArgumentNullException(nameof(issuerPrivateKey));
+
         var csr = X509CertUtils.ReadCsr(certificateSigningRequestPem, nameof(certificateSigningRequestPem));
         if (!VerifyCsr(csr))
             throw new CryptographicException("The certificate signing request signature is invalid.");
 
         var issuerCertificate = X509CertUtils.ReadCertificate(issuerCertificatePem, nameof(issuerCertificatePem));
-        var issuerPrivateKey = PemUtils.ParsePrivateKey(issuerPrivateKeyPem, password);
+        var issuerSigningKey = RequirePrivate(issuerPrivateKey, nameof(issuerPrivateKey));
         var csrInfo = csr.GetCertificationRequestInfo();
 
         var generator = new X509V3CertificateGenerator();
@@ -98,7 +103,7 @@ public sealed class X509CertificateService : IX509CertificateService
         generator.SetPublicKey(csr.GetPublicKey());
         X509CertUtils.ApplyExtensions(generator, options);
 
-        return X509CertUtils.WritePem(Sign(generator, signatureAlgorithm, issuerPrivateKey));
+        return X509CertUtils.WritePem(Sign(generator, signatureAlgorithm, issuerSigningKey));
     }
 
     /// <inheritdoc />
@@ -174,29 +179,37 @@ public sealed class X509CertificateService : IX509CertificateService
     }
 
     /// <inheritdoc />
-    public byte[] ExportPkcs12(string certificatePem, string privateKeyPem, char[] password, IReadOnlyList<string>? chainPems = null)
+    public byte[] ExportPkcs12(string certificatePem, RsaKey privateKey, char[] password, IReadOnlyList<string>? chainPems = null)
     {
+        if (privateKey is null) throw new ArgumentNullException(nameof(privateKey));
+        // The sole password protects the produced archive; the key handle carries no passphrase of its own.
         if (password is null) throw new ArgumentNullException(nameof(password));
 
         var certificate = X509CertUtils.ReadCertificate(certificatePem, nameof(certificatePem));
-        // The input private-key PEM is expected unencrypted; the sole password protects the produced archive.
-        var privateKey = PemUtils.ParsePrivateKey(privateKeyPem, password: null);
+        var key = RequirePrivate(privateKey, nameof(privateKey));
 
         var chain = new List<X509Certificate>();
         if (chainPems is not null)
             foreach (var chainPem in chainPems)
                 chain.Add(X509CertUtils.ReadCertificate(chainPem, nameof(chainPems)));
 
-        return X509CertUtils.ExportPkcs12(certificate, privateKey, password, chain, _random);
+        return X509CertUtils.ExportPkcs12(certificate, key, password, chain, _random);
     }
 
     /// <inheritdoc />
-    public (string certificatePem, string privateKeyPem) ImportPkcs12(byte[] pkcs12, char[] password)
+    public (string certificatePem, RsaKey privateKey) ImportPkcs12(byte[] pkcs12, char[] password)
     {
         if (password is null) throw new ArgumentNullException(nameof(password));
 
         var (certificate, privateKey) = X509CertUtils.ImportPkcs12(pkcs12, password, nameof(pkcs12));
-        return (X509CertUtils.WritePem(certificate), PemUtils.WritePrivateKeyPem(privateKey, password: null));
+
+        // The extracted key becomes a handle directly: no private-key PEM is written here for the caller to
+        // re-parse, which is the whole point of the handle crossing this API.
+        if (privateKey is not RsaKeyParameters { IsPrivate: true } rsaPrivateKey)
+            throw new ArgumentException(
+                "The PKCS#12 archive's key entry is not an RSA private key.", nameof(pkcs12));
+
+        return (X509CertUtils.WritePem(certificate), RsaKey.FromBcKey(rsaPrivateKey));
     }
 
     /// <inheritdoc />
@@ -206,6 +219,18 @@ public sealed class X509CertificateService : IX509CertificateService
     /// <inheritdoc />
     public string ImportCertificateFromDer(byte[] derEncodedCertificate)
         => X509CertUtils.WritePem(X509CertUtils.ReadCertificateFromDer(derEncodedCertificate, nameof(derEncodedCertificate)));
+
+    // The BouncyCastle key a signing / bundling operation runs on. A public-only handle is a bad argument to the
+    // method rather than a broken handle, so it is reported as ArgumentException naming the parameter the caller
+    // passed — the same mapping PublicKeyService applies to its own private-key operations.
+    private static RsaKeyParameters RequirePrivate(RsaKey key, string paramName)
+    {
+        if (!key.HasPrivateKey)
+            throw new ArgumentException(
+                "The key holds only a public key; this operation requires a private key.", paramName);
+
+        return key.BcKey;
+    }
 
     // Signs the assembled certificate, wrapping a BouncyCastle signing failure as CryptographicException.
     private X509Certificate Sign(X509V3CertificateGenerator generator, RsaSignatureAlgorithm algorithm, AsymmetricKeyParameter signingKey)

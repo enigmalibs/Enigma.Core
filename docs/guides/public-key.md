@@ -316,6 +316,16 @@ OpenSSL's legacy `EVP_BytesToKey` — MD5, a single iteration.
 So no key file needs converting. To move an old file onto the stronger derivation,
 import it and export it again.
 
+### The certificate service moved too
+
+`IX509CertificateService` made the same change in 2.0.0: its key-taking methods
+now take an `RsaKey` instead of a private-key PEM plus a `char[]? password`, and
+`ImportPkcs12` returns a handle rather than a PEM. So a handle imported here goes
+straight into certificate generation, CSR generation, issuance and PKCS#12
+export. See
+[Migrating from the PEM-string API](certificates.md#migrating-from-the-pem-string-api)
+in the certificates guide.
+
 ### `RsaKey` is not `IDisposable`
 
 Deliberately. BouncyCastle holds RSA private components as arbitrary-precision
