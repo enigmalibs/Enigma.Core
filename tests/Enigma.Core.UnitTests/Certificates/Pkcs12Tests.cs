@@ -36,7 +36,8 @@ public class Pkcs12Tests(CertificateKeyFixture keys)
     public void ImportPkcs12_ExtractedKeyCanSign()
     {
         var publicKeyService = new PublicKeyServiceFactory().CreatePublicKeyService();
-        var (publicKeyPem, privateKeyPem) = publicKeyService.GenerateRsaKeyPair(2048);
+        var rsaKey = publicKeyService.GenerateRsaKey(2048);
+        var privateKeyPem = rsaKey.ExportPrivateKeyPem();
         var service = keys.NewService();
         var cert = service.GenerateSelfSignedCertificate("CN=PFX Sign Test", privateKeyPem, NotBefore, NotAfter);
         var password = "password123".ToCharArray();
@@ -44,10 +45,11 @@ public class Pkcs12Tests(CertificateKeyFixture keys)
         var pfx = service.ExportPkcs12(cert, privateKeyPem, password);
         var (_, extractedKeyPem) = service.ImportPkcs12(pfx, password);
 
-        // Sign with the extracted private key; verify with the original public key.
+        // Sign with the extracted private key; verify with the original key's public half. ImportPkcs12 returns an
+        // unencrypted PEM, so importing it as a handle needs no passphrase.
         var data = "test data"u8.ToArray();
-        var signature = publicKeyService.Sign(data, extractedKeyPem);
-        Assert.True(publicKeyService.Verify(data, signature, publicKeyPem));
+        var signature = publicKeyService.Sign(data, RsaKey.ImportPrivateKeyPem(extractedKeyPem));
+        Assert.True(publicKeyService.Verify(data, signature, rsaKey));
     }
 
     [Fact]

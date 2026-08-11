@@ -240,9 +240,8 @@ public class MLDsaPemErrorTests
 
     private static (string PublicKeyPem, string PrivateKeyPem) RsaPems()
     {
-        var (publicKeyPem, privateKeyPem) =
-            new PublicKeyServiceFactory().CreatePublicKeyService().GenerateRsaKeyPair(2048);
-        return (publicKeyPem, privateKeyPem);
+        var rsaKey = new PublicKeyServiceFactory().CreatePublicKeyService().GenerateRsaKey(2048);
+        return (rsaKey.ExportPublicKeyPem(), rsaKey.ExportPrivateKeyPem());
     }
 
     // The sibling family's real PEM service, so the fixture is exactly the file a user would hand over. PHASE01

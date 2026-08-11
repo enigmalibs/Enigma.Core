@@ -5,30 +5,40 @@ using Xunit;
 namespace Enigma.Core.UnitTests.PublicKey;
 
 /// <summary>
-/// The restored <see cref="IPublicKeyService.GenerateRsaKeyPair"/>: PEM-string output, the unencrypted vs
-/// AES-256-CBC-encrypted private-key formats, round-tripping through the encrypt/sign methods, the
-/// passphrase paths, and the non-positive key-size guard.
+/// <see cref="IPublicKeyService.GenerateRsaKey"/>: the single handle it hands out (carrying both halves), the
+/// unencrypted vs PBES2-encrypted private-key export formats, round-tripping through the encrypt/sign methods,
+/// the passphrase paths, and the non-positive key-size guard.
 /// </summary>
 public class RsaKeyGenerationTests
 {
     private static IPublicKeyService Service() => new PublicKeyServiceFactory().CreatePublicKeyService();
 
     [Fact]
-    public void GenerateRsaKeyPair_NoPassword_ProducesUnencryptedPkcs8PrivateKeyPem()
+    public void GenerateRsaKey_ReturnsAHandleCarryingBothHalves()
     {
-        var (publicKeyPem, privateKeyPem) = Service().GenerateRsaKeyPair(2048);
+        var key = Service().GenerateRsaKey(2048);
 
-        Assert.Contains("-----BEGIN PUBLIC KEY-----", publicKeyPem);
-        Assert.Contains("-----BEGIN PRIVATE KEY-----", privateKeyPem);
-        // Not encrypted and not the traditional RSA envelope.
-        Assert.DoesNotContain("ENCRYPTED", privateKeyPem);
-        Assert.DoesNotContain("RSA PRIVATE KEY", privateKeyPem);
+        Assert.True(key.HasPrivateKey);
+        Assert.Equal(2048, key.KeySizeBits);
+        Assert.Contains("-----BEGIN PUBLIC KEY-----", key.ExportPublicKeyPem());
     }
 
     [Fact]
-    public void GenerateRsaKeyPair_WithPassword_ProducesPbes2EncryptedPrivateKeyPem()
+    public void GenerateRsaKey_ExportedWithoutPassword_ProducesUnencryptedPkcs8PrivateKeyPem()
     {
-        var (_, privateKeyPem) = Service().GenerateRsaKeyPair(2048, "pass-phrase".ToCharArray());
+        var key = Service().GenerateRsaKey(2048);
+
+        Assert.Contains("-----BEGIN PUBLIC KEY-----", key.ExportPublicKeyPem());
+        Assert.Contains("-----BEGIN PRIVATE KEY-----", key.ExportPrivateKeyPem());
+        // Not encrypted and not the traditional RSA envelope.
+        Assert.DoesNotContain("ENCRYPTED", key.ExportPrivateKeyPem());
+        Assert.DoesNotContain("RSA PRIVATE KEY", key.ExportPrivateKeyPem());
+    }
+
+    [Fact]
+    public void GenerateRsaKey_ExportedWithPassword_ProducesPbes2EncryptedPrivateKeyPem()
+    {
+        var privateKeyPem = Service().GenerateRsaKey(2048).ExportPrivateKeyPem("pass-phrase".ToCharArray());
 
         // The emitted format is PKCS#8 PBES2 (PBKDF2-HMAC-SHA256 + AES-256-CBC), not the traditional OpenSSL
         // envelope this test used to pin: that one derives its key with OpenSSL's legacy EVP_BytesToKey
@@ -41,43 +51,63 @@ public class RsaKeyGenerationTests
     }
 
     [Fact]
-    public void GenerateRsaKeyPair_Unencrypted_RoundTripsThroughEncryptAndSign()
+    public void GenerateRsaKey_RoundTripsThroughEncryptAndSign_OnTheHandleItself()
     {
         var service = Service();
-        var (publicKeyPem, privateKeyPem) = service.GenerateRsaKeyPair(2048);
+        var key = service.GenerateRsaKey(2048);
         var plaintext = System.Text.Encoding.UTF8.GetBytes("generated-key round-trip");
 
-        var encrypted = service.EncryptPkcs1(plaintext, publicKeyPem);
-        Assert.Equal(plaintext, service.DecryptPkcs1(encrypted, privateKeyPem));
+        var encrypted = service.EncryptPkcs1(plaintext, key);
+        Assert.Equal(plaintext, service.DecryptPkcs1(encrypted, key));
 
-        var signature = service.Sign(plaintext, privateKeyPem);
-        Assert.True(service.Verify(plaintext, signature, publicKeyPem));
+        var signature = service.Sign(plaintext, key);
+        Assert.True(service.Verify(plaintext, signature, key));
     }
 
     [Fact]
-    public void GenerateRsaKeyPair_Encrypted_ReParsesWithPassword()
+    public void GenerateRsaKey_Unencrypted_RoundTripsThroughExportAndReImport()
+    {
+        var service = Service();
+        var key = service.GenerateRsaKey(2048);
+        var publicKey = RsaKey.ImportPublicKeyPem(key.ExportPublicKeyPem());
+        var privateKey = RsaKey.ImportPrivateKeyPem(key.ExportPrivateKeyPem());
+        var plaintext = System.Text.Encoding.UTF8.GetBytes("generated-key round-trip");
+
+        var encrypted = service.EncryptPkcs1(plaintext, publicKey);
+        Assert.Equal(plaintext, service.DecryptPkcs1(encrypted, privateKey));
+
+        var signature = service.Sign(plaintext, privateKey);
+        Assert.True(service.Verify(plaintext, signature, publicKey));
+    }
+
+    [Fact]
+    public void GenerateRsaKey_Encrypted_ReImportsWithPassword()
     {
         var service = Service();
         var password = "S3cr3t-passphrase".ToCharArray();
-        var (publicKeyPem, privateKeyPem) = service.GenerateRsaKeyPair(2048, password);
+        var key = service.GenerateRsaKey(2048);
+        var publicKey = RsaKey.ImportPublicKeyPem(key.ExportPublicKeyPem());
+        var encryptedPrivateKeyPem = key.ExportPrivateKeyPem(password);
         var plaintext = System.Text.Encoding.UTF8.GetBytes("encrypted-key round-trip");
 
-        // The encrypted private-key PEM must re-parse with its password on the private-key operations.
-        var encrypted = service.EncryptPkcs1(plaintext, publicKeyPem);
-        var decrypted = service.DecryptPkcs1(encrypted, privateKeyPem, password: "S3cr3t-passphrase".ToCharArray());
-        Assert.Equal(plaintext, decrypted);
+        // The encrypted private-key PEM must re-import with its password, once, and then serve both operations.
+        var privateKey = RsaKey.ImportPrivateKeyPem(encryptedPrivateKeyPem, "S3cr3t-passphrase".ToCharArray());
 
-        var signature = service.Sign(plaintext, privateKeyPem, password: "S3cr3t-passphrase".ToCharArray());
-        Assert.True(service.Verify(plaintext, signature, publicKeyPem));
+        var encrypted = service.EncryptPkcs1(plaintext, publicKey);
+        Assert.Equal(plaintext, service.DecryptPkcs1(encrypted, privateKey));
+
+        var signature = service.Sign(plaintext, privateKey);
+        Assert.True(service.Verify(plaintext, signature, publicKey));
     }
 
     [Fact]
-    public void GenerateRsaKeyPair_DoesNotClearCallerPassword()
+    public void ExportPrivateKeyPem_DoesNotClearCallerPassword()
     {
         var password = "keep-me".ToCharArray();
-        Service().GenerateRsaKeyPair(1024, password);
+        Service().GenerateRsaKey(1024).ExportPrivateKeyPem(password);
 
-        // The caller owns the passphrase array; generation must not blank it.
+        // The caller owns the passphrase array; writing the PEM must not blank it. (Generation itself no longer
+        // takes a password at all — the passphrase belongs to the export and to the matching import.)
         Assert.Equal("keep-me".ToCharArray(), password);
     }
 
@@ -85,6 +115,6 @@ public class RsaKeyGenerationTests
     [InlineData(0)]
     [InlineData(-1)]
     [InlineData(-2048)]
-    public void GenerateRsaKeyPair_NonPositiveKeySize_ThrowsArgumentException(int keySizeBits)
-        => Assert.Throws<ArgumentException>(() => Service().GenerateRsaKeyPair(keySizeBits));
+    public void GenerateRsaKey_NonPositiveKeySize_ThrowsArgumentException(int keySizeBits)
+        => Assert.Throws<ArgumentException>(() => Service().GenerateRsaKey(keySizeBits));
 }

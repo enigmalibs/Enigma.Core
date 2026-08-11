@@ -15,9 +15,8 @@ namespace Enigma.Core.UnitTests.PublicKey;
 /// equivalence, the public-half derivation, and its argument and passphrase failure modes.
 /// </summary>
 /// <remarks>
-/// Operations still go through the PEM-string service API in this phase — <see cref="IPublicKeyService"/> only
-/// starts taking a handle in PHASE02 — so equivalence is asserted by exporting a handle and running the
-/// existing service against the result.
+/// Handles are what <see cref="IPublicKeyService"/> takes, so equivalence between two handles is asserted by
+/// running the service against each of them directly.
 /// </remarks>
 [Collection(RsaKeyCollection.Name)]
 public class RsaKeyTests(RsaKeyFixture keys)
@@ -38,7 +37,7 @@ public class RsaKeyTests(RsaKeyFixture keys)
 
     private static readonly byte[] Payload = "RsaKey round-trip payload"u8.ToArray();
 
-    // ---- public surface (acceptance criterion 2) ----
+    // ---- public surface ----
 
     [Fact]
     public void RsaKey_ExposesExactlyTheSixDocumentedPublicMembers()
@@ -61,7 +60,7 @@ public class RsaKeyTests(RsaKeyFixture keys)
             ],
             members);
 
-        // Instances come only from the two static importers (and, from PHASE02, IPublicKeyService.GenerateRsaKey).
+        // Instances come only from the two static importers and IPublicKeyService.GenerateRsaKey.
         Assert.Empty(typeof(RsaKey).GetConstructors(BindingFlags.Public | BindingFlags.Instance));
     }
 
@@ -75,11 +74,13 @@ public class RsaKeyTests(RsaKeyFixture keys)
         Assert.False(typeof(IDisposable).IsAssignableFrom(typeof(RsaKey)));
     }
 
-    [Fact]
-    public void RsaKey_ExposesItsBouncyCastleKeyOnlyAsPlainInternal()
+    [Theory]
+    [InlineData("BcKey")]
+    [InlineData("BcPublicKey")]
+    public void RsaKey_ExposesItsBouncyCastleKeysOnlyAsPlainInternal(string propertyName)
     {
         var getter = typeof(RsaKey)
-            .GetProperty("BcKey", BindingFlags.NonPublic | BindingFlags.Instance)?.GetMethod;
+            .GetProperty(propertyName, BindingFlags.NonPublic | BindingFlags.Instance)?.GetMethod;
 
         Assert.NotNull(getter);
         Assert.True(getter.IsAssembly);
@@ -88,7 +89,7 @@ public class RsaKeyTests(RsaKeyFixture keys)
         Assert.False(getter.IsFamilyOrAssembly);
     }
 
-    // ---- the three readable private-key forms (acceptance criteria 1 and 3) ----
+    // ---- the three readable private-key forms ----
 
     [Fact]
     public void LegacyEncryptedFixture_IsInTheTraditionalOpenSslFormat()
@@ -109,8 +110,7 @@ public class RsaKeyTests(RsaKeyFixture keys)
 
         Assert.True(key.HasPrivateKey);
         Assert.Equal(2048, key.KeySizeBits);
-        Assert.True(Service().Verify(Payload, Service().Sign(Payload, key.ExportPrivateKeyPem()),
-            key.ExportPublicKeyPem()));
+        Assert.True(Service().Verify(Payload, Service().Sign(Payload, key), key));
     }
 
     [Fact]
@@ -120,8 +120,7 @@ public class RsaKeyTests(RsaKeyFixture keys)
 
         Assert.True(key.HasPrivateKey);
         Assert.Equal(2048, key.KeySizeBits);
-        Assert.True(Service().Verify(Payload, Service().Sign(Payload, key.ExportPrivateKeyPem()),
-            key.ExportPublicKeyPem()));
+        Assert.True(Service().Verify(Payload, Service().Sign(Payload, key), key));
     }
 
     [Fact]
@@ -134,8 +133,8 @@ public class RsaKeyTests(RsaKeyFixture keys)
         Assert.Equal(4096, key.KeySizeBits);
 
         // The handle really holds the fixture's key: its signature verifies under the committed public half.
-        var signature = Service().Sign(Payload, key.ExportPrivateKeyPem());
-        Assert.True(Service().Verify(Payload, signature, Pbes2FixturePublicPem()));
+        var signature = Service().Sign(Payload, key);
+        Assert.True(Service().Verify(Payload, signature, RsaKey.ImportPublicKeyPem(Pbes2FixturePublicPem())));
     }
 
     [Fact]
@@ -147,7 +146,7 @@ public class RsaKeyTests(RsaKeyFixture keys)
         Assert.Equal(LegacyFixturePassphrase.ToCharArray(), password);
     }
 
-    // ---- written formats (acceptance criterion 5) ----
+    // ---- written formats ----
 
     [Fact]
     public void ExportPrivateKeyPem_NoPassword_EmitsUnencryptedPkcs8()
@@ -180,7 +179,7 @@ public class RsaKeyTests(RsaKeyFixture keys)
         Assert.DoesNotContain("PRIVATE", pem);
     }
 
-    // ---- export → re-import equivalence (acceptance criterion 4) ----
+    // ---- export → re-import equivalence ----
 
     [Fact]
     public void ExportPrivateKeyPem_Unencrypted_ReImportsToAnEquivalentKey()
@@ -204,23 +203,21 @@ public class RsaKeyTests(RsaKeyFixture keys)
     }
 
     // Two handles are equivalent when they sign identically (RSASSA-PKCS1-v1_5 is deterministic), when one
-    // decrypts what the other's public half encrypted, and when they agree on the public key and its size.
+    // decrypts what the other encrypted, and when they agree on the public key and its size.
     private static void AssertEquivalent(RsaKey expected, RsaKey actual)
     {
         var service = Service();
 
-        Assert.Equal(
-            service.Sign(Payload, expected.ExportPrivateKeyPem()),
-            service.Sign(Payload, actual.ExportPrivateKeyPem()));
+        Assert.Equal(service.Sign(Payload, expected), service.Sign(Payload, actual));
 
-        var ciphertext = service.EncryptPkcs1(Payload, expected.ExportPublicKeyPem());
-        Assert.Equal(Payload, service.DecryptPkcs1(ciphertext, actual.ExportPrivateKeyPem()));
+        var ciphertext = service.EncryptPkcs1(Payload, expected);
+        Assert.Equal(Payload, service.DecryptPkcs1(ciphertext, actual));
 
         Assert.Equal(expected.ExportPublicKeyPem(), actual.ExportPublicKeyPem());
         Assert.Equal(expected.KeySizeBits, actual.KeySizeBits);
     }
 
-    // ---- passphrase failure modes, on both encrypted formats (acceptance criterion 6) ----
+    // ---- passphrase failure modes, on both encrypted formats ----
 
     [Fact]
     public void ImportPrivateKeyPem_Pbes2_WrongPassword_ThrowsCryptographicException()
@@ -240,17 +237,18 @@ public class RsaKeyTests(RsaKeyFixture keys)
     public void ImportPrivateKeyPem_Legacy_MissingPassword_ThrowsCryptographicException()
         => Assert.Throws<CryptographicException>(() => RsaKey.ImportPrivateKeyPem(LegacyEncryptedPem()));
 
-    // ---- key metadata (acceptance criterion 7) ----
+    // ---- key metadata ----
 
     [Theory]
     [InlineData(2048)]
     [InlineData(3072)]
     public void KeySizeBits_ReportsTheModulusSize(int keySizeBits)
     {
-        var (publicKeyPem, privateKeyPem) = Service().GenerateRsaKeyPair(keySizeBits);
+        var generated = Service().GenerateRsaKey(keySizeBits);
 
-        Assert.Equal(keySizeBits, RsaKey.ImportPrivateKeyPem(privateKeyPem).KeySizeBits);
-        Assert.Equal(keySizeBits, RsaKey.ImportPublicKeyPem(publicKeyPem).KeySizeBits);
+        Assert.Equal(keySizeBits, generated.KeySizeBits);
+        Assert.Equal(keySizeBits, RsaKey.ImportPrivateKeyPem(generated.ExportPrivateKeyPem()).KeySizeBits);
+        Assert.Equal(keySizeBits, RsaKey.ImportPublicKeyPem(generated.ExportPublicKeyPem()).KeySizeBits);
     }
 
     [Fact]
@@ -260,14 +258,16 @@ public class RsaKeyTests(RsaKeyFixture keys)
         Assert.False(RsaKey.ImportPublicKeyPem(keys.PublicKeyPem).HasPrivateKey);
     }
 
-    // ---- public-only vs private handles (acceptance criterion 8) ----
+    // ---- public-only vs private handles ----
 
     [Fact]
     public void ExportPrivateKeyPem_OnPublicOnlyHandle_ThrowsInvalidOperationException()
     {
         var key = RsaKey.ImportPublicKeyPem(keys.PublicKeyPem);
 
-        // The fault is the handle's own state, not a caller argument — hence InvalidOperationException.
+        // The fault is the handle's own state, not a caller argument — hence InvalidOperationException. (A
+        // public-only handle passed to a private *service* operation is an ArgumentException instead; see
+        // RsaArgumentValidationTests.)
         Assert.Throws<InvalidOperationException>(() => key.ExportPrivateKeyPem());
         Assert.Throws<InvalidOperationException>(() => key.ExportPrivateKeyPem("any".ToCharArray()));
     }
@@ -278,15 +278,15 @@ public class RsaKeyTests(RsaKeyFixture keys)
         var key = RsaKey.ImportPrivateKeyPem(keys.PrivateKeyPem);
 
         var derivedPublicPem = key.ExportPublicKeyPem();
-        var signature = Service().Sign(Payload, key.ExportPrivateKeyPem());
+        var signature = Service().Sign(Payload, key);
 
         Assert.Contains("-----BEGIN PUBLIC KEY-----", derivedPublicPem);
-        Assert.True(Service().Verify(Payload, signature, derivedPublicPem));
-        // ...and it is the same public key the generator handed out alongside the private one.
+        Assert.True(Service().Verify(Payload, signature, RsaKey.ImportPublicKeyPem(derivedPublicPem)));
+        // ...and it is the same public key the generated handle hands out alongside the private one.
         Assert.Equal(keys.PublicKeyPem, derivedPublicPem);
     }
 
-    // ---- argument guards (acceptance criterion 9) ----
+    // ---- argument guards ----
 
     [Fact]
     public void ImportPublicKeyPem_NullPem_ThrowsArgumentNullException()
@@ -300,6 +300,7 @@ public class RsaKeyTests(RsaKeyFixture keys)
     [InlineData("")]
     [InlineData("   ")]
     [InlineData("not a pem at all")]
+    [InlineData("garbage")]
     [InlineData("-----BEGIN PUBLIC KEY-----\nnot base64!!\n-----END PUBLIC KEY-----")]
     public void ImportPublicKeyPem_EmptyOrMalformedPem_ThrowsArgumentExceptionNamingThePem(string pem)
         => Assert.Equal("pem", Assert.Throws<ArgumentException>(() => RsaKey.ImportPublicKeyPem(pem)).ParamName);
@@ -308,6 +309,7 @@ public class RsaKeyTests(RsaKeyFixture keys)
     [InlineData("")]
     [InlineData("   ")]
     [InlineData("not a pem at all")]
+    [InlineData("garbage")]
     [InlineData("-----BEGIN PRIVATE KEY-----\nnot base64!!\n-----END PRIVATE KEY-----")]
     public void ImportPrivateKeyPem_EmptyOrMalformedPem_ThrowsArgumentExceptionNamingThePem(string pem)
         => Assert.Equal("pem", Assert.Throws<ArgumentException>(() => RsaKey.ImportPrivateKeyPem(pem)).ParamName);

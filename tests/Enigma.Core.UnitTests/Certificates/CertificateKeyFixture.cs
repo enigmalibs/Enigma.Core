@@ -17,12 +17,14 @@ public sealed class CertificateKeyFixture
 
     public CertificateKeyFixture()
     {
+        // The certificate API still takes private keys as PEM text (it moves onto the RsaKey handle in a later
+        // work item), so each generated handle is exported straight to the PEM the fixture hands out.
         var keyGen = new PublicKeyServiceFactory().CreatePublicKeyService();
-        (_, RootPrivateKeyPem) = keyGen.GenerateRsaKeyPair(2048);
-        (_, IntermediatePrivateKeyPem) = keyGen.GenerateRsaKeyPair(2048);
-        (_, LeafPrivateKeyPem) = keyGen.GenerateRsaKeyPair(2048);
-        (_, UnrelatedRootPrivateKeyPem) = keyGen.GenerateRsaKeyPair(2048);
-        (_, EncryptedPrivateKeyPem) = keyGen.GenerateRsaKeyPair(2048, EncryptedKeyPassword);
+        RootPrivateKeyPem = keyGen.GenerateRsaKey(2048).ExportPrivateKeyPem();
+        IntermediatePrivateKeyPem = keyGen.GenerateRsaKey(2048).ExportPrivateKeyPem();
+        LeafPrivateKeyPem = keyGen.GenerateRsaKey(2048).ExportPrivateKeyPem();
+        UnrelatedRootPrivateKeyPem = keyGen.GenerateRsaKey(2048).ExportPrivateKeyPem();
+        EncryptedPrivateKeyPem = keyGen.GenerateRsaKey(2048).ExportPrivateKeyPem(EncryptedKeyPassword);
     }
 
     /// <summary>An unencrypted 2048-bit RSA private key, PEM-encoded (used as the root / self-signed key).</summary>
@@ -37,7 +39,7 @@ public sealed class CertificateKeyFixture
     /// <summary>A fourth, independent unencrypted 2048-bit RSA private key, PEM-encoded (used as an unrelated/untrusted root key).</summary>
     public string UnrelatedRootPrivateKeyPem { get; }
 
-    /// <summary>A 2048-bit RSA private key encrypted (AES-256-CBC) under <see cref="EncryptedKeyPassword"/>, PEM-encoded.</summary>
+    /// <summary>A 2048-bit RSA private key encrypted (PBES2: PBKDF2-HMAC-SHA256 + AES-256-CBC) under <see cref="EncryptedKeyPassword"/>, PEM-encoded.</summary>
     public string EncryptedPrivateKeyPem { get; }
 
     /// <summary>Creates a fresh X.509 certificate service through the public factory.</summary>

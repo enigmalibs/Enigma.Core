@@ -11,9 +11,9 @@ namespace Enigma.Core.Asymmetric.PublicKey;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Instances are created by <see cref="ImportPublicKeyPem"/> / <see cref="ImportPrivateKeyPem"/> and are
-/// <b>immutable</b>: a handle carries the key it was built from and nothing else, so it is safe to cache in a
-/// field and to use concurrently from several threads.
+/// Instances are created by <see cref="ImportPublicKeyPem"/>, <see cref="ImportPrivateKeyPem"/> and
+/// <see cref="IPublicKeyService.GenerateRsaKey"/>, and are <b>immutable</b>: a handle carries the key it was
+/// built from and nothing else, so it is safe to cache in a field and to use concurrently from several threads.
 /// </para>
 /// <para>
 /// <b>Private key material cannot be wiped.</b> The underlying key components are held as arbitrary-precision
@@ -40,13 +40,44 @@ public sealed class RsaKey
         KeySizeBits = key.Modulus.BitLength;
     }
 
-    // The single construction point inside the assembly: the two importers below, and (from the breaking phase
-    // of this work) PublicKeyService.GenerateRsaKey, which wraps a freshly generated key pair's private half.
+    // The single construction point inside the assembly: the two importers below, and
+    // PublicKeyService.GenerateRsaKey, which wraps a freshly generated key pair's private half.
     // Deliberately plain internal — the isolation guard treats protected internal as exposed surface.
     internal static RsaKey FromBcKey(RsaKeyParameters key) => new(key);
 
     /// <summary>The parsed BouncyCastle key, for <see cref="PublicKeyService"/> to wire into a cipher or signer.</summary>
     internal RsaKeyParameters BcKey { get; }
+
+    /// <summary>
+    /// The public half of this handle, for <see cref="PublicKeyService"/> to wire into a public-key operation:
+    /// <see cref="BcKey"/> itself when this handle is public-only, and the key derived from the private key's CRT
+    /// components otherwise.
+    /// </summary>
+    /// <remarks>
+    /// Load-bearing for the "a private handle also serves the public operations" contract: BouncyCastle's RSA core
+    /// selects the private exponentiation from the <em>key type</em> alone, not from the cipher's direction, so
+    /// handing a private key to an encryption or verification step would silently perform the wrong operation.
+    /// Every public-key operation therefore reads this member rather than <see cref="BcKey"/>.
+    /// </remarks>
+    /// <exception cref="InvalidOperationException">
+    /// This handle carries a private key that does not include the public exponent.
+    /// </exception>
+    internal RsaKeyParameters BcPublicKey
+    {
+        get
+        {
+            if (!BcKey.IsPrivate)
+                return BcKey;
+
+            // A CRT key carries the public exponent alongside the private components, which is what makes the
+            // public half derivable; a bare private key (modulus + private exponent only) does not.
+            if (BcKey is not RsaPrivateCrtKeyParameters crt)
+                throw new InvalidOperationException(
+                    "The public key cannot be derived from this private key: it does not carry the public exponent.");
+
+            return new RsaKeyParameters(isPrivate: false, crt.Modulus, crt.PublicExponent);
+        }
+    }
 
     /// <summary>The size of the RSA modulus, in bits (for example 2048 or 3072).</summary>
     public int KeySizeBits { get; }
@@ -116,19 +147,7 @@ public sealed class RsaKey
     /// This handle carries a private key that does not include the public exponent, so no public half can be
     /// derived from it.
     /// </exception>
-    public string ExportPublicKeyPem()
-    {
-        if (!BcKey.IsPrivate)
-            return PemEnvelope.WritePublicKeyPem(BcKey);
-
-        // A CRT key carries the public exponent alongside the private components, which is what makes the public
-        // half derivable; a bare private key (modulus + private exponent only) does not.
-        if (BcKey is not RsaPrivateCrtKeyParameters crt)
-            throw new InvalidOperationException(
-                "The public key cannot be derived from this private key: it does not carry the public exponent.");
-
-        return PemEnvelope.WritePublicKeyPem(new RsaKeyParameters(isPrivate: false, crt.Modulus, crt.PublicExponent));
-    }
+    public string ExportPublicKeyPem() => PemEnvelope.WritePublicKeyPem(BcPublicKey);
 
     /// <summary>
     /// Exports the private key as a PEM string: an unencrypted PKCS#8 <c>PRIVATE KEY</c> PEM when

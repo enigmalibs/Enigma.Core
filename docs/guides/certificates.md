@@ -14,9 +14,10 @@ var certFactory = new X509CertificateServiceFactory();
 IX509CertificateService certificates = certFactory.CreateX509CertificateService();
 ```
 
-Certificates never carry their own key pair generation. To obtain the
-private-key PEM that certifies a subject and signs a certificate, use the RSA
-public-key service:
+Certificates never carry their own key generation. To obtain the private-key PEM
+that certifies a subject and signs a certificate, generate an RSA key with the
+public-key service and export it — the certificate API takes the PEM text, not the
+`RsaKey` handle:
 
 ```csharp
 using Enigma.Core.Asymmetric.PublicKey;
@@ -24,7 +25,8 @@ using Enigma.Core.Asymmetric.PublicKey;
 var keyFactory = new PublicKeyServiceFactory();
 IPublicKeyService rsa = keyFactory.CreatePublicKeyService();
 
-(string publicKeyPem, string privateKeyPem) = rsa.GenerateRsaKeyPair();
+RsaKey key = rsa.GenerateRsaKey();
+string privateKeyPem = key.ExportPrivateKeyPem();
 ```
 
 Both factories are constructed directly with `new`. The `I*` interfaces are
@@ -65,7 +67,7 @@ The other values are `Sha1WithRsa`, `Sha384WithRsa` and `Sha512WithRsa`.
 | `X509KeyUsage` | `Enigma.Core.Certificates` | `[Flags]` enum of permitted key usages. |
 | `CertificateInfo` | `Enigma.Core.Certificates` | `sealed record` of the fields read back from a certificate. |
 | `RsaSignatureAlgorithm` | `Enigma.Core` | Selects the certificate signature algorithm. |
-| `IPublicKeyService` | `Enigma.Core.Asymmetric.PublicKey` | RSA service used to generate the key pair. |
+| `IPublicKeyService` | `Enigma.Core.Asymmetric.PublicKey` | RSA service used to generate the key. |
 
 ### `X509CertificateOptions`
 
@@ -102,7 +104,7 @@ A `sealed record` with read-only properties: `string Subject`, `string Issuer`,
 
 ### Self-signed certificate
 
-Generate a key pair, sign a certificate for the subject, then read a couple of
+Generate a key, sign a certificate for the subject, then read a couple of
 fields back with `GetCertificateInfo`.
 
 ```csharp
@@ -117,7 +119,7 @@ IX509CertificateService certificates = certFactory.CreateX509CertificateService(
 var keyFactory = new PublicKeyServiceFactory();
 IPublicKeyService rsa = keyFactory.CreatePublicKeyService();
 
-(string publicKeyPem, string privateKeyPem) = rsa.GenerateRsaKeyPair();
+string privateKeyPem = rsa.GenerateRsaKey().ExportPrivateKeyPem();
 
 string certificatePem = certificates.GenerateSelfSignedCertificate(
     "CN=example.com",
@@ -145,7 +147,7 @@ string certificatePem = certificates.GenerateSelfSignedCertificate(
 ### CSR and issuance from a CA
 
 Build a self-signed CA (with the CA flag and the `KeyCertSign | CrlSign` key
-usage set through `X509CertificateOptions`), then generate a leaf key pair and
+usage set through `X509CertificateOptions`), then generate a leaf key and
 CSR, issue a leaf certificate from that CSR, and validate that the leaf chains
 back to the CA.
 
@@ -161,7 +163,7 @@ var keyFactory = new PublicKeyServiceFactory();
 IPublicKeyService rsa = keyFactory.CreatePublicKeyService();
 
 // 1. Certificate authority.
-(string _, string caPrivateKeyPem) = rsa.GenerateRsaKeyPair();
+string caPrivateKeyPem = rsa.GenerateRsaKey().ExportPrivateKeyPem();
 
 string caCertPem = certificates.GenerateSelfSignedCertificate(
     "CN=Example Root CA",
@@ -174,8 +176,8 @@ string caCertPem = certificates.GenerateSelfSignedCertificate(
         KeyUsage = X509KeyUsage.KeyCertSign | X509KeyUsage.CrlSign,
     });
 
-// 2. Leaf key pair and CSR.
-(string _, string leafPrivateKeyPem) = rsa.GenerateRsaKeyPair();
+// 2. Leaf key and CSR.
+string leafPrivateKeyPem = rsa.GenerateRsaKey().ExportPrivateKeyPem();
 
 string csrPem = certificates.GenerateCertificateSigningRequest(
     "CN=service.example.com",
@@ -288,11 +290,14 @@ foreach (string dnsName in info.SubjectAlternativeNames)
   and keys — with two documented exceptions: PKCS#12 archives
   (`ExportPkcs12` / `ImportPkcs12`) and DER-encoded certificates
   (`ExportCertificateToDer` / `ImportCertificateFromDer`) are `byte[]`.
-- `GenerateRsaKeyPair` returns an unencrypted private-key PEM by default. Pass a
-  `char[]` password to have it returned AES-256-CBC-encrypted. When a private-key
-  PEM is encrypted, supply the same `char[]` password to the `password` parameter
-  of `GenerateSelfSignedCertificate`, `GenerateCertificateSigningRequest` and
-  `IssueCertificate`; leave it `null` for an unencrypted PEM.
+- `RsaKey.ExportPrivateKeyPem()` returns an unencrypted private-key PEM. Pass a
+  `char[]` password to have it returned encrypted (PBES2: PBKDF2-HMAC-SHA256 +
+  AES-256-CBC). When a private-key PEM is encrypted, supply the same `char[]`
+  password to the `password` parameter of `GenerateSelfSignedCertificate`,
+  `GenerateCertificateSigningRequest` and `IssueCertificate`; leave it `null` for
+  an unencrypted PEM. Certificate operations also read the traditional OpenSSL
+  encrypted envelope that earlier versions wrote, so existing key files keep
+  working.
 - The PKCS#12 password (`ExportPkcs12` / `ImportPkcs12`) is a separate `char[]`
   protecting the archive itself. It may be empty but must not be `null`. The
   private key stored in the archive is unencrypted, and `ImportPkcs12` returns it

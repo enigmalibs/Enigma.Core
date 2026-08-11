@@ -29,7 +29,7 @@ usage samples** — and every snippet targets the real public API.
 ## Asymmetric cryptography
 
 - [Public-key (RSA)](public-key.md) — key generation, PKCS#1 v1.5 & OAEP encryption,
-  RSASSA-PKCS1-v1_5 signatures.
+  RSASSA-PKCS1-v1_5 signatures, all over the reusable `RsaKey` handle.
 - [Post-quantum (PQC)](pqc.md) — ML-KEM (FIPS 203) key encapsulation and ML-DSA (FIPS 204)
   signatures.
 

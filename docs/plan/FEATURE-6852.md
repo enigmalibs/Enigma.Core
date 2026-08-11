@@ -1,6 +1,6 @@
 # FEATURE-6852 — `RsaKey` handle for the PublicKey module (BREAKING)
 
-**Status:** IN PROGRESS (multi-phase)
+**Status:** DONE (multi-phase)
 **Type:** FEATURE (multi-phase)
 **Branch (per phase, at build time):** `feature/feature-6852-phaseNN-<slug>` — one branch per phase, cut from current `HEAD`.
 
@@ -280,7 +280,7 @@ pin the **old write format** and therefore change deliberately.
 
 ## PHASE02 — Cut the PEM-string surface (BREAKING)
 
-**Status:** TODO
+**Status:** DONE
 **Branch:** `feature/feature-6852-phase02-breaking-cut`
 
 ### Scope
