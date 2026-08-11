@@ -8,17 +8,17 @@ using Xunit;
 namespace Enigma.Core.UnitTests.Pqc;
 
 /// <summary>
-/// Failure modes of the ML-DSA PEM service: null guards, undefined enum values, PEMs that are structurally broken
+/// Failure modes of the ML-KEM PEM service: null guards, undefined enum values, PEMs that are structurally broken
 /// or carry the wrong kind of key, key bytes of the wrong length, and the two password paths. Also pins that no
-/// BouncyCastle exception type ever reaches a caller. Backs PHASE01 acceptance criteria 11-13 and the error half
-/// of criterion 8.
+/// BouncyCastle exception type ever reaches a caller. Mirrors <see cref="MLDsaPemErrorTests"/>; backs PHASE02
+/// acceptance criterion 2 (PHASE01 criteria 11-13 and the error half of criterion 8).
 /// </summary>
-public class MLDsaPemErrorTests
+public class MLKemPemErrorTests
 {
-    private static readonly IMLDsaPemService Pem = new MLDsaPemServiceFactory().CreateMLDsaPemService();
+    private static readonly IMLKemPemService Pem = new MLKemPemServiceFactory().CreateMLKemPemService();
 
     private const string Passphrase = "correct horse battery staple";
-    private const MLDsaParameterSet Set = MLDsaParameterSet.MLDsa65;
+    private const MLKemParameterSet Set = MLKemParameterSet.MLKem768;
 
     // Generated once per class: an unencrypted pair, plus an encrypted PEM (600 000 PBKDF2 iterations, ~0.6 s).
     private static readonly Lazy<(string PublicKeyPem, string PrivateKeyPem)> Pair =
@@ -27,7 +27,7 @@ public class MLDsaPemErrorTests
     private static readonly Lazy<string> EncryptedPrivateKeyPem =
         new(() => Pem.GenerateKeyPairPem(Set, Passphrase.ToCharArray()).privateKeyPem);
 
-    // ---- null arguments (criterion 12) ----
+    // ---- null arguments ----
 
     [Fact]
     public void ToPublicKeyPem_NullKey_Throws()
@@ -45,11 +45,11 @@ public class MLDsaPemErrorTests
     public void FromPrivateKeyPem_NullPem_Throws()
         => Assert.Throws<ArgumentNullException>(() => Pem.FromPrivateKeyPem(null!));
 
-    // ---- undefined enum values (criterion 12) ----
+    // ---- undefined enum values ----
 
     [Fact]
     public void GenerateKeyPairPem_UndefinedParameterSet_Throws()
-        => Assert.Throws<ArgumentOutOfRangeException>(() => Pem.GenerateKeyPairPem((MLDsaParameterSet)999));
+        => Assert.Throws<ArgumentOutOfRangeException>(() => Pem.GenerateKeyPairPem((MLKemParameterSet)999));
 
     [Fact]
     public void GenerateKeyPairPem_UndefinedFormat_Throws()
@@ -59,14 +59,14 @@ public class MLDsaPemErrorTests
     [Fact]
     public void ToPublicKeyPem_UndefinedParameterSet_Throws()
         => Assert.Throws<ArgumentOutOfRangeException>(
-            () => Pem.ToPublicKeyPem(new byte[1952], (MLDsaParameterSet)999));
+            () => Pem.ToPublicKeyPem(new byte[1184], (MLKemParameterSet)999));
 
     [Fact]
     public void ToPrivateKeyPem_UndefinedParameterSet_Throws()
         => Assert.Throws<ArgumentOutOfRangeException>(
-            () => Pem.ToPrivateKeyPem(new byte[4032], (MLDsaParameterSet)999));
+            () => Pem.ToPrivateKeyPem(new byte[2400], (MLKemParameterSet)999));
 
-    // ---- key bytes of the wrong length or parameter set (criterion 11) ----
+    // ---- key bytes of the wrong length or parameter set ----
 
     [Fact]
     public void ToPublicKeyPem_WrongLengthKey_ThrowsArgumentExceptionNamingTheKey()
@@ -85,15 +85,15 @@ public class MLDsaPemErrorTests
     [Fact]
     public void ToPublicKeyPem_KeyForADifferentParameterSet_Throws()
     {
-        // An ML-DSA-44 public key is 1312 bytes; declaring it as ML-DSA-65 (1952) is a length mismatch.
-        var (publicKey, _) = new MLDsaServiceFactory()
-            .CreateMLDsaService(MLDsaParameterSet.MLDsa44).GenerateKeyPair();
+        // An ML-KEM-512 public key is 800 bytes; declaring it as ML-KEM-768 (1184) is a length mismatch.
+        var (publicKey, _) = new MLKemServiceFactory()
+            .CreateMLKemService(MLKemParameterSet.MLKem512).GenerateKeyPair();
 
-        var ex = Assert.Throws<ArgumentException>(() => Pem.ToPublicKeyPem(publicKey, MLDsaParameterSet.MLDsa65));
+        var ex = Assert.Throws<ArgumentException>(() => Pem.ToPublicKeyPem(publicKey, MLKemParameterSet.MLKem768));
         Assert.Equal("publicKey", ex.ParamName);
     }
 
-    // ---- structurally broken PEMs (criterion 11) ----
+    // ---- structurally broken PEMs ----
 
     [Theory]
     [InlineData("")]
@@ -133,7 +133,7 @@ public class MLDsaPemErrorTests
         Assert.Equal("pem", ex.ParamName);
     }
 
-    // ---- a valid PEM carrying the wrong kind of key (criterion 11) ----
+    // ---- a valid PEM carrying the wrong kind of key ----
 
     [Fact]
     public void FromPublicKeyPem_PrivateKeyPem_Throws()
@@ -150,16 +150,16 @@ public class MLDsaPemErrorTests
     }
 
     [Fact]
-    public void FromPublicKeyPem_MLKemPublicKeyPem_Throws()
+    public void FromPublicKeyPem_MLDsaPublicKeyPem_Throws()
     {
-        var ex = Assert.Throws<ArgumentException>(() => Pem.FromPublicKeyPem(MLKemPems().PublicKeyPem));
+        var ex = Assert.Throws<ArgumentException>(() => Pem.FromPublicKeyPem(MLDsaPems().PublicKeyPem));
         Assert.Equal("pem", ex.ParamName);
     }
 
     [Fact]
-    public void FromPrivateKeyPem_MLKemPrivateKeyPem_Throws()
+    public void FromPrivateKeyPem_MLDsaPrivateKeyPem_Throws()
     {
-        var ex = Assert.Throws<ArgumentException>(() => Pem.FromPrivateKeyPem(MLKemPems().PrivateKeyPem));
+        var ex = Assert.Throws<ArgumentException>(() => Pem.FromPrivateKeyPem(MLDsaPems().PrivateKeyPem));
         Assert.Equal("pem", ex.ParamName);
     }
 
@@ -177,7 +177,7 @@ public class MLDsaPemErrorTests
         Assert.Equal("pem", ex.ParamName);
     }
 
-    // ---- password paths (criterion 8) ----
+    // ---- password paths ----
 
     [Fact]
     public void FromPrivateKeyPem_EncryptedPem_NoPassword_ThrowsCryptographic()
@@ -196,10 +196,10 @@ public class MLDsaPemErrorTests
             Pem.FromPrivateKeyPem(Pair.Value.PrivateKeyPem, Passphrase.ToCharArray());
 
         Assert.Equal(Set, parameterSet);
-        Assert.Equal(4032, privateKey.Length);
+        Assert.Equal(2400, privateKey.Length);
     }
 
-    // ---- no BouncyCastle exception escapes (criterion 13) ----
+    // ---- no BouncyCastle exception escapes ----
 
     [Fact]
     public void NoPublicMethod_LeaksABouncyCastleExceptionType()
@@ -245,9 +245,9 @@ public class MLDsaPemErrorTests
         return (publicKeyPem, privateKeyPem);
     }
 
-    // The sibling family's real PEM service, so the fixture is exactly the file a user would hand over. PHASE01
-    // built these with BouncyCastle directly because no ML-KEM PEM service existed yet; PHASE02 ships one.
-    private static (string PublicKeyPem, string PrivateKeyPem) MLKemPems()
-        => new MLKemPemServiceFactory().CreateMLKemPemService()
-            .GenerateKeyPairPem(MLKemParameterSet.MLKem768, format: MLPrivateKeyPemFormat.ExpandedKey);
+    // The sibling family's real PEM service, so the fixture is exactly the file a user would hand over — no
+    // test-only BouncyCastle needed now that both families ship one.
+    private static (string PublicKeyPem, string PrivateKeyPem) MLDsaPems()
+        => new MLDsaPemServiceFactory().CreateMLDsaPemService()
+            .GenerateKeyPairPem(MLDsaParameterSet.MLDsa65, format: MLPrivateKeyPemFormat.ExpandedKey);
 }

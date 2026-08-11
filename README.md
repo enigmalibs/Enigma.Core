@@ -21,8 +21,8 @@ container. BouncyCastle powers the implementations but never leaks onto the publ
 - **Public-key (RSA)** — key generation with PEM import/export (optionally AES-256-CBC-encrypted
   private keys), PKCS#1 v1.5 and OAEP encryption, and RSASSA-PKCS1-v1_5 signing/verification.
 - **Post-quantum (PQC)** — ML-KEM 512/768/1024 (FIPS 203) key encapsulation and ML-DSA 44/65/87
-  (FIPS 204) signatures. ML-DSA keys also have PEM import/export (optionally PBES2-encrypted private
-  keys), recovering the parameter set from the PEM on read.
+  (FIPS 204) signatures. Both families also have PEM import/export (optionally PBES2-encrypted
+  private keys), recovering the parameter set from the PEM on read.
 - **X.509 certificates** — self-signed generation, CSR creation & verification, CA issuance, chain
   validation, CRL-based revocation checks, PKCS#12 and DER import/export, and certificate inspection
   (including thumbprint).

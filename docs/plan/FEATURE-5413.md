@@ -1,6 +1,6 @@
 # FEATURE-5413 — PQC PEM services (ML-DSA / ML-KEM)
 
-**Status:** IN PROGRESS (multi-phase)
+**Status:** DONE (multi-phase)
 **Type:** FEATURE (multi-phase)
 **Branch (per phase, at build time):** `feature/feature-5413-phaseNN-<slug>` — one branch per phase, cut from current `HEAD`.
 
@@ -390,7 +390,7 @@ Standard `dev-workflow` DoD:
 
 ## PHASE02 — ML-KEM PEM service
 
-**Status:** TODO
+**Status:** DONE
 **Branch:** `feature/feature-5413-phase02-mlkem-pem`
 
 ### Scope

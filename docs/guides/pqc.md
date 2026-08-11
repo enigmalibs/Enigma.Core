@@ -52,7 +52,10 @@ factory creates the service, not per call.
 | `MLDsaPemServiceFactory` | Concrete ML-DSA PEM factory. Implements `IMLDsaPemServiceFactory`. Create with `new`. |
 | `IMLDsaPemServiceFactory` | ML-DSA PEM factory interface. DI-friendly. |
 | `IMLDsaPemService` | Converts ML-DSA keys between raw bytes and PEM text. |
-| `MLPrivateKeyPemFormat` | Enum selecting which representation of a private key a PEM stores. |
+| `MLKemPemServiceFactory` | Concrete ML-KEM PEM factory. Implements `IMLKemPemServiceFactory`. Create with `new`. |
+| `IMLKemPemServiceFactory` | ML-KEM PEM factory interface. DI-friendly. |
+| `IMLKemPemService` | Converts ML-KEM keys between raw bytes and PEM text. |
+| `MLPrivateKeyPemFormat` | Enum selecting which representation of a private key a PEM stores. Shared by both families. |
 
 The factory methods return the service interfaces:
 
@@ -284,9 +287,98 @@ IMLDsaPemService pem = new MLDsaPemServiceFactory().CreateMLDsaPemService();
     format: MLPrivateKeyPemFormat.ExpandedKey);
 ```
 
+### ML-KEM key PEM
+
+`IMLKemPemService` is the same contract for the other family: the same three envelopes, the same
+PBES2 encryption, the same `MLPrivateKeyPemFormat` enum — only the parameter-set type and the key
+sizes differ.
+
+| Value | PKCS#8 body (ML-KEM-768) | PEM size | |
+|-------|-------------------------:|---------:|--|
+| `Seed` | 86 bytes | ~170 chars | The default. Smallest by far |
+| `ExpandedKey` | 2,428 bytes | ~3,350 chars | Most interoperable |
+| `SeedAndExpandedKey` | 2,498 bytes | ~3,440 chars | Both representations |
+
+The ML-KEM seed is 64 bytes (ML-DSA's is 32). As with ML-DSA, `FromPrivateKeyPem` always hands back
+the **expanded** FIPS 203 decapsulation key — exactly what `IMLKemService.Decapsulate` accepts —
+whichever format the PEM stored, and `ToPrivateKeyPem` takes no format argument because an expanded
+key no longer contains the seed it came from.
+
+```csharp
+IMLKemPemService CreateMLKemPemService();
+```
+
+`IMLKemPemService` exposes five methods:
+
+```csharp
+(string publicKeyPem, string privateKeyPem) GenerateKeyPairPem(
+    MLKemParameterSet parameterSet,
+    char[]? password = null,
+    MLPrivateKeyPemFormat format = MLPrivateKeyPemFormat.Seed);
+
+string ToPublicKeyPem(byte[] publicKey, MLKemParameterSet parameterSet);
+string ToPrivateKeyPem(byte[] privateKey, MLKemParameterSet parameterSet, char[]? password = null);
+
+(byte[] publicKey, MLKemParameterSet parameterSet) FromPublicKeyPem(string pem);
+(byte[] privateKey, MLKemParameterSet parameterSet) FromPrivateKeyPem(string pem, char[]? password = null);
+```
+
+#### Distribute a public key as PEM, keep the private key encrypted
+
+This is the shape most ML-KEM deployments want: the recipient publishes the `PUBLIC KEY` PEM and
+keeps an `ENCRYPTED PRIVATE KEY` PEM on disk.
+
+```csharp
+using System;
+using Enigma.Core.Asymmetric.Pqc;
+using Enigma.Core.Extensions;
+
+IMLKemPemService pem = new MLKemPemServiceFactory().CreateMLKemPemService();
+
+char[] password = "correct horse battery staple".ToCharArray();
+
+// The recipient generates a key pair straight to PEM and publishes only the public half.
+(string publicKeyPem, string privateKeyPem) =
+    pem.GenerateKeyPairPem(MLKemParameterSet.MLKem768, password);
+
+// --- sender side: only the public-key PEM is needed ---
+(byte[] recipientPublicKey, MLKemParameterSet parameterSet) = pem.FromPublicKeyPem(publicKeyPem);
+
+IMLKemService kem = new MLKemServiceFactory().CreateMLKemService(parameterSet);
+(byte[] ciphertext, byte[] senderSecret) = kem.Encapsulate(recipientPublicKey);
+
+// --- recipient side: unlock the private-key PEM and recover the same secret ---
+(byte[] recipientPrivateKey, _) = pem.FromPrivateKeyPem(privateKeyPem, password);
+byte[] recipientSecret = kem.Decapsulate(ciphertext, recipientPrivateKey);
+
+Console.WriteLine($"Shared secret: {recipientSecret.ToHexString()}");
+Console.WriteLine($"Secrets match: {senderSecret.ToHexString() == recipientSecret.ToHexString()}");
+
+// The library never clears your passphrase — you own its lifetime.
+Array.Clear(password, 0, password.Length);
+```
+
+#### Serialize ML-KEM keys you already hold
+
+```csharp
+using Enigma.Core.Asymmetric.Pqc;
+
+IMLKemService kem = new MLKemServiceFactory().CreateMLKemService(MLKemParameterSet.MLKem768);
+(byte[] publicKey, byte[] privateKey) = kem.GenerateKeyPair();
+
+IMLKemPemService pem = new MLKemPemServiceFactory().CreateMLKemPemService();
+
+// Round-trips byte-identically: what you read back equals what you wrote.
+string publicKeyPem = pem.ToPublicKeyPem(publicKey, MLKemParameterSet.MLKem768);
+string privateKeyPem = pem.ToPrivateKeyPem(privateKey, MLKemParameterSet.MLKem768);
+
+(byte[] samePublicKey, _) = pem.FromPublicKeyPem(publicKeyPem);
+(byte[] samePrivateKey, _) = pem.FromPrivateKeyPem(privateKeyPem);
+```
+
 ### Error handling
 
-The PEM services follow the same contract as the rest of the library:
+Both PEM services follow the same contract as the rest of the library:
 
 | Situation | Exception |
 |-----------|-----------|
@@ -305,10 +397,10 @@ the `InnerException`.
 - Keys, ciphertexts and signatures are raw `byte[]` values in their FIPS 203 /
   FIPS 204 encodings. Private keys are the **expanded** encodings, so they are
   directly usable by `Decapsulate` and `Sign` with no seed re-derivation.
-- **PEM is opt-in and additive:** `IMLDsaService` is unchanged by it. Reach for
-  `IMLDsaPemService` when a key has to leave the process as text; keep using the
-  `byte[]` API when it does not. Both describe the same keys, and a key can move
-  between the two freely.
+- **PEM is opt-in and additive:** `IMLDsaService` and `IMLKemService` are unchanged
+  by it. Reach for `IMLDsaPemService` / `IMLKemPemService` when a key has to leave
+  the process as text; keep using the `byte[]` API when it does not. Both describe
+  the same keys, and a key can move between the two freely.
 - **ML-KEM shared-secret flow:** the sender calls `Encapsulate(recipientPublicKey)`
   to obtain `(ciphertext, sharedSecret)` and transmits only the `ciphertext`; the
   recipient calls `Decapsulate(ciphertext, privateKey)` to recover the same
