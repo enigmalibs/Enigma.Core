@@ -1,5 +1,6 @@
 using System;
 using System.Numerics;
+using Enigma.Core.Asymmetric.PublicKey;
 using Enigma.Core.Certificates;
 using Xunit;
 
@@ -18,7 +19,7 @@ public class SelfSignedCertificateTests(CertificateKeyFixture keys)
     private static readonly DateTimeOffset NotAfter = new(2026, 6, 1, 0, 0, 0, TimeSpan.Zero);
 
     private string SelfSigned(string dn, RsaSignatureAlgorithm alg = RsaSignatureAlgorithm.Sha256WithRsa, X509CertificateOptions? options = null) =>
-        keys.NewService().GenerateSelfSignedCertificate(dn, keys.RootPrivateKeyPem, NotBefore, NotAfter, alg, password: null, options);
+        keys.NewService().GenerateSelfSignedCertificate(dn, keys.RootPrivateKey, NotBefore, NotAfter, alg, options);
 
     [Fact]
     public void GenerateSelfSigned_ReturnsCertificatePem()
@@ -137,13 +138,24 @@ public class SelfSignedCertificateTests(CertificateKeyFixture keys)
     public void GenerateSelfSigned_NullSubject_Throws()
     {
         Assert.Throws<ArgumentNullException>(() =>
-            keys.NewService().GenerateSelfSignedCertificate(null!, keys.RootPrivateKeyPem, NotBefore, NotAfter));
+            keys.NewService().GenerateSelfSignedCertificate(null!, keys.RootPrivateKey, NotBefore, NotAfter));
     }
 
     [Fact]
-    public void GenerateSelfSigned_MalformedPrivateKeyPem_Throws()
+    public void GenerateSelfSigned_NullPrivateKey_Throws()
     {
-        Assert.Throws<ArgumentException>(() =>
-            keys.NewService().GenerateSelfSignedCertificate("CN=Test", "not a pem", NotBefore, NotAfter));
+        // Replaces the former malformed-PEM test: with key material crossing as a handle there is no PEM string to
+        // malform here, and RsaKeyTests already owns that assertion at the import boundary where the PEM now lives.
+        Assert.Equal("privateKey", Assert.Throws<ArgumentNullException>(() =>
+            keys.NewService().GenerateSelfSignedCertificate("CN=Test", null!, NotBefore, NotAfter)).ParamName);
+    }
+
+    [Fact]
+    public void GenerateSelfSigned_PublicOnlyKey_ThrowsArgumentExceptionNamingTheKey()
+    {
+        var publicOnly = RsaKey.ImportPublicKeyPem(keys.RootPrivateKey.ExportPublicKeyPem());
+
+        Assert.Equal("privateKey", Assert.Throws<ArgumentException>(() =>
+            keys.NewService().GenerateSelfSignedCertificate("CN=Test", publicOnly, NotBefore, NotAfter)).ParamName);
     }
 }

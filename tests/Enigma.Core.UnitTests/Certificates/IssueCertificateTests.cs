@@ -1,4 +1,5 @@
 using System;
+using Enigma.Core.Asymmetric.PublicKey;
 using Enigma.Core.Certificates;
 using Xunit;
 
@@ -26,10 +27,10 @@ public class IssueCertificateTests(CertificateKeyFixture keys)
     public void IssueCertificate_IssuerIsCaSubject_SubjectIsCsrSubject()
     {
         var service = keys.NewService();
-        var caPem = service.GenerateSelfSignedCertificate("CN=Test CA", keys.RootPrivateKeyPem, NotBefore, NotAfter, options: CaOptions);
-        var csrPem = service.GenerateCertificateSigningRequest("CN=leaf.example.com,O=CSR Org", keys.LeafPrivateKeyPem);
+        var caPem = service.GenerateSelfSignedCertificate("CN=Test CA", keys.RootPrivateKey, NotBefore, NotAfter, options: CaOptions);
+        var csrPem = service.GenerateCertificateSigningRequest("CN=leaf.example.com,O=CSR Org", keys.LeafPrivateKey);
 
-        var leafPem = service.IssueCertificate(csrPem, caPem, keys.RootPrivateKeyPem, NotBefore, NotAfter);
+        var leafPem = service.IssueCertificate(csrPem, caPem, keys.RootPrivateKey, NotBefore, NotAfter);
 
         var caInfo = service.GetCertificateInfo(caPem);
         var leafInfo = service.GetCertificateInfo(leafPem);
@@ -42,10 +43,10 @@ public class IssueCertificateTests(CertificateKeyFixture keys)
     public void IssueCertificate_LeafHasOwnSerialNotSharedWithIssuer()
     {
         var service = keys.NewService();
-        var caPem = service.GenerateSelfSignedCertificate("CN=CA", keys.RootPrivateKeyPem, NotBefore, NotAfter, options: CaOptions);
-        var csrPem = service.GenerateCertificateSigningRequest("CN=Leaf", keys.LeafPrivateKeyPem);
+        var caPem = service.GenerateSelfSignedCertificate("CN=CA", keys.RootPrivateKey, NotBefore, NotAfter, options: CaOptions);
+        var csrPem = service.GenerateCertificateSigningRequest("CN=Leaf", keys.LeafPrivateKey);
 
-        var leafPem = service.IssueCertificate(csrPem, caPem, keys.RootPrivateKeyPem, NotBefore, NotAfter);
+        var leafPem = service.IssueCertificate(csrPem, caPem, keys.RootPrivateKey, NotBefore, NotAfter);
 
         Assert.NotEqual(service.GetCertificateInfo(caPem).SerialNumber, service.GetCertificateInfo(leafPem).SerialNumber);
     }
@@ -56,15 +57,15 @@ public class IssueCertificateTests(CertificateKeyFixture keys)
         var service = keys.NewService();
 
         var rootPem = service.GenerateSelfSignedCertificate(
-            "CN=Root CA", keys.RootPrivateKeyPem, NotBefore, NotAfter, options: CaOptions);
+            "CN=Root CA", keys.RootPrivateKey, NotBefore, NotAfter, options: CaOptions);
 
-        var intermediateCsr = service.GenerateCertificateSigningRequest("CN=Intermediate CA", keys.IntermediatePrivateKeyPem);
+        var intermediateCsr = service.GenerateCertificateSigningRequest("CN=Intermediate CA", keys.IntermediatePrivateKey);
         var intermediatePem = service.IssueCertificate(
-            intermediateCsr, rootPem, keys.RootPrivateKeyPem, NotBefore, NotAfter, options: CaOptions);
+            intermediateCsr, rootPem, keys.RootPrivateKey, NotBefore, NotAfter, options: CaOptions);
 
-        var leafCsr = service.GenerateCertificateSigningRequest("CN=leaf.example.com", keys.LeafPrivateKeyPem);
+        var leafCsr = service.GenerateCertificateSigningRequest("CN=leaf.example.com", keys.LeafPrivateKey);
         var leafPem = service.IssueCertificate(
-            leafCsr, intermediatePem, keys.IntermediatePrivateKeyPem, NotBefore, NotAfter);
+            leafCsr, intermediatePem, keys.IntermediatePrivateKey, NotBefore, NotAfter);
 
         var rootInfo = service.GetCertificateInfo(rootPem);
         var intermediateInfo = service.GetCertificateInfo(intermediatePem);
@@ -80,19 +81,42 @@ public class IssueCertificateTests(CertificateKeyFixture keys)
     public void IssueCertificate_MalformedCsr_Throws()
     {
         var service = keys.NewService();
-        var caPem = service.GenerateSelfSignedCertificate("CN=CA", keys.RootPrivateKeyPem, NotBefore, NotAfter, options: CaOptions);
+        var caPem = service.GenerateSelfSignedCertificate("CN=CA", keys.RootPrivateKey, NotBefore, NotAfter, options: CaOptions);
 
         Assert.Throws<ArgumentException>(() =>
-            service.IssueCertificate("not a csr pem", caPem, keys.RootPrivateKeyPem, NotBefore, NotAfter));
+            service.IssueCertificate("not a csr pem", caPem, keys.RootPrivateKey, NotBefore, NotAfter));
     }
 
     [Fact]
     public void IssueCertificate_MalformedIssuerCertificate_Throws()
     {
         var service = keys.NewService();
-        var csrPem = service.GenerateCertificateSigningRequest("CN=Leaf", keys.LeafPrivateKeyPem);
+        var csrPem = service.GenerateCertificateSigningRequest("CN=Leaf", keys.LeafPrivateKey);
 
         Assert.Throws<ArgumentException>(() =>
-            service.IssueCertificate(csrPem, "not a certificate", keys.RootPrivateKeyPem, NotBefore, NotAfter));
+            service.IssueCertificate(csrPem, "not a certificate", keys.RootPrivateKey, NotBefore, NotAfter));
+    }
+
+    [Fact]
+    public void IssueCertificate_NullIssuerPrivateKey_Throws()
+    {
+        var service = keys.NewService();
+        var caPem = service.GenerateSelfSignedCertificate("CN=CA", keys.RootPrivateKey, NotBefore, NotAfter, options: CaOptions);
+        var csrPem = service.GenerateCertificateSigningRequest("CN=Leaf", keys.LeafPrivateKey);
+
+        Assert.Equal("issuerPrivateKey", Assert.Throws<ArgumentNullException>(() =>
+            service.IssueCertificate(csrPem, caPem, null!, NotBefore, NotAfter)).ParamName);
+    }
+
+    [Fact]
+    public void IssueCertificate_PublicOnlyIssuerKey_ThrowsArgumentExceptionNamingTheKey()
+    {
+        var service = keys.NewService();
+        var caPem = service.GenerateSelfSignedCertificate("CN=CA", keys.RootPrivateKey, NotBefore, NotAfter, options: CaOptions);
+        var csrPem = service.GenerateCertificateSigningRequest("CN=Leaf", keys.LeafPrivateKey);
+        var publicOnly = RsaKey.ImportPublicKeyPem(keys.RootPrivateKey.ExportPublicKeyPem());
+
+        Assert.Equal("issuerPrivateKey", Assert.Throws<ArgumentException>(() =>
+            service.IssueCertificate(csrPem, caPem, publicOnly, NotBefore, NotAfter)).ParamName);
     }
 }

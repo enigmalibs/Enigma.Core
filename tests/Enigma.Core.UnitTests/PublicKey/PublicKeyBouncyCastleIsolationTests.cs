@@ -10,11 +10,16 @@ namespace Enigma.Core.UnitTests.PublicKey;
 
 /// <summary>
 /// Principle 1, scoped to <c>Enigma.Core.Asymmetric.PublicKey</c> (plus the shared
-/// <see cref="RsaSignatureAlgorithm"/> enum): the RSA service hides BouncyCastle behind PEM strings,
-/// <see cref="char"/>-array passphrases and the <c>(string, string)</c> key-pair tuple, so this guard walks
+/// <see cref="RsaSignatureAlgorithm"/> enum): the RSA service hides BouncyCastle behind the
+/// <see cref="RsaKey"/> handle, PEM strings and <see cref="char"/>-array passphrases, so this guard walks
 /// every exported type in the namespace and fails if any <c>Org.BouncyCastle.*</c> type appears on a base
 /// type, implemented interface, exposed method return/parameter, constructor parameter, or exposed field.
 /// </summary>
+/// <remarks>
+/// <see cref="RsaKey"/> is the type this matters most for: it exists to carry a parsed BouncyCastle key, and
+/// does so through plain <c>internal</c> members only. The walk below counts <c>protected internal</c> as
+/// exposed, so widening one of those would fail here.
+/// </remarks>
 public class PublicKeyBouncyCastleIsolationTests
 {
     private const string ForbiddenNamespaceRoot = "Org.BouncyCastle";
@@ -31,6 +36,7 @@ public class PublicKeyBouncyCastleIsolationTests
 
         Assert.Contains(typeof(PublicKeyService), types);
         Assert.Contains(typeof(PublicKeyServiceFactory), types);
+        Assert.Contains(typeof(RsaKey), types);
 
         var offenders = new List<string>();
 

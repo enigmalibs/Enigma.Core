@@ -22,45 +22,76 @@ public class Pkcs12Tests(CertificateKeyFixture keys)
     public void ExportImportPkcs12_RoundTrip_PreservesCertificate()
     {
         var service = keys.NewService();
-        var cert = service.GenerateSelfSignedCertificate("CN=PFX Test", keys.RootPrivateKeyPem, NotBefore, NotAfter);
+        var cert = service.GenerateSelfSignedCertificate("CN=PFX Test", keys.RootPrivateKey, NotBefore, NotAfter);
         var password = "password123".ToCharArray();
 
-        var pfx = service.ExportPkcs12(cert, keys.RootPrivateKeyPem, password);
-        var (certPem, privateKeyPem) = service.ImportPkcs12(pfx, password);
+        var pfx = service.ExportPkcs12(cert, keys.RootPrivateKey, password);
+        var (certPem, privateKey) = service.ImportPkcs12(pfx, password);
 
-        Assert.Equal(service.GetCertificateInfo(cert).Thumbprint, service.GetCertificateInfo(certPem).Thumbprint);
-        Assert.Contains("PRIVATE KEY", privateKeyPem);
+        var original = service.GetCertificateInfo(cert);
+        var recovered = service.GetCertificateInfo(certPem);
+        Assert.Equal(original.Thumbprint, recovered.Thumbprint);
+        Assert.Equal(original.Subject, recovered.Subject);
+        Assert.Equal(original.SerialNumber, recovered.SerialNumber);
+
+        // The recovered handle is the same key that went in: a private handle of the same modulus, exporting the
+        // same public half. (Comparing the public PEM compares the modulus and exponent.)
+        Assert.True(privateKey.HasPrivateKey);
+        Assert.Equal(keys.RootPrivateKey.KeySizeBits, privateKey.KeySizeBits);
+        Assert.Equal(keys.RootPrivateKey.ExportPublicKeyPem(), privateKey.ExportPublicKeyPem());
     }
 
     [Fact]
     public void ImportPkcs12_ExtractedKeyCanSign()
     {
         var publicKeyService = new PublicKeyServiceFactory().CreatePublicKeyService();
-        var (publicKeyPem, privateKeyPem) = publicKeyService.GenerateRsaKeyPair(2048);
+        var rsaKey = publicKeyService.GenerateRsaKey(2048);
         var service = keys.NewService();
-        var cert = service.GenerateSelfSignedCertificate("CN=PFX Sign Test", privateKeyPem, NotBefore, NotAfter);
+        var cert = service.GenerateSelfSignedCertificate("CN=PFX Sign Test", rsaKey, NotBefore, NotAfter);
         var password = "password123".ToCharArray();
 
-        var pfx = service.ExportPkcs12(cert, privateKeyPem, password);
-        var (_, extractedKeyPem) = service.ImportPkcs12(pfx, password);
+        var pfx = service.ExportPkcs12(cert, rsaKey, password);
+        var (_, extractedKey) = service.ImportPkcs12(pfx, password);
 
-        // Sign with the extracted private key; verify with the original public key.
+        // Sign with the extracted private key; verify with the original key's public half. The handle comes back
+        // ready to use — no intermediate PEM is written or re-parsed on this path, and no passphrase is involved.
         var data = "test data"u8.ToArray();
-        var signature = publicKeyService.Sign(data, extractedKeyPem);
-        Assert.True(publicKeyService.Verify(data, signature, publicKeyPem));
+        var signature = publicKeyService.Sign(data, extractedKey);
+        Assert.True(publicKeyService.Verify(data, signature, rsaKey));
+    }
+
+    [Fact]
+    public void ImportPkcs12_ExtractedKeySignatureVerifiesAgainstReturnedCertificate()
+    {
+        var publicKeyService = new PublicKeyServiceFactory().CreatePublicKeyService();
+        var service = keys.NewService();
+        var cert = service.GenerateSelfSignedCertificate("CN=PFX Cert Match", keys.LeafPrivateKey, NotBefore, NotAfter);
+        var password = "password123".ToCharArray();
+
+        var pfx = service.ExportPkcs12(cert, keys.LeafPrivateKey, password);
+        var (certPem, privateKey) = service.ImportPkcs12(pfx, password);
+
+        // The returned handle and the returned certificate belong together: a signature made with the handle
+        // verifies under the public key the *returned certificate* certifies (read back test-side, since the
+        // product API exposes no certificate-to-public-key accessor).
+        var data = "bound to the certificate"u8.ToArray();
+        var signature = publicKeyService.Sign(data, privateKey);
+        var certifiedPublicKey = RsaKey.ImportPublicKeyPem(TestPkcs12Builder.ReadCertificatePublicKeyPem(certPem));
+
+        Assert.True(publicKeyService.Verify(data, signature, certifiedPublicKey));
     }
 
     [Fact]
     public void ExportPkcs12_WithChain_RoundTrips()
     {
         var service = keys.NewService();
-        var root = service.GenerateSelfSignedCertificate("CN=Root CA", keys.RootPrivateKeyPem, NotBefore, NotAfter,
+        var root = service.GenerateSelfSignedCertificate("CN=Root CA", keys.RootPrivateKey, NotBefore, NotAfter,
             options: new X509CertificateOptions { IsCertificateAuthority = true });
-        var csr = service.GenerateCertificateSigningRequest("CN=Leaf", keys.LeafPrivateKeyPem);
-        var leaf = service.IssueCertificate(csr, root, keys.RootPrivateKeyPem, NotBefore, NotAfter);
+        var csr = service.GenerateCertificateSigningRequest("CN=Leaf", keys.LeafPrivateKey);
+        var leaf = service.IssueCertificate(csr, root, keys.RootPrivateKey, NotBefore, NotAfter);
         var password = "pass".ToCharArray();
 
-        var pfx = service.ExportPkcs12(leaf, keys.LeafPrivateKeyPem, password, [root]);
+        var pfx = service.ExportPkcs12(leaf, keys.LeafPrivateKey, password, [root]);
         var (certPem, _) = service.ImportPkcs12(pfx, password);
 
         Assert.Equal(service.GetCertificateInfo(leaf).Thumbprint, service.GetCertificateInfo(certPem).Thumbprint);
@@ -77,8 +108,8 @@ public class Pkcs12Tests(CertificateKeyFixture keys)
     public void ImportPkcs12_WrongPassword_ThrowsCryptographicException()
     {
         var service = keys.NewService();
-        var cert = service.GenerateSelfSignedCertificate("CN=PFX Test", keys.RootPrivateKeyPem, NotBefore, NotAfter);
-        var pfx = service.ExportPkcs12(cert, keys.RootPrivateKeyPem, "correct-password".ToCharArray());
+        var cert = service.GenerateSelfSignedCertificate("CN=PFX Test", keys.RootPrivateKey, NotBefore, NotAfter);
+        var pfx = service.ExportPkcs12(cert, keys.RootPrivateKey, "correct-password".ToCharArray());
 
         Assert.Throws<CryptographicException>(() => service.ImportPkcs12(pfx, "wrong-password".ToCharArray()));
     }
@@ -87,9 +118,9 @@ public class Pkcs12Tests(CertificateKeyFixture keys)
     public void ExportImportPkcs12_EmptyPassword_RoundTrips()
     {
         var service = keys.NewService();
-        var cert = service.GenerateSelfSignedCertificate("CN=Empty Password", keys.RootPrivateKeyPem, NotBefore, NotAfter);
+        var cert = service.GenerateSelfSignedCertificate("CN=Empty Password", keys.RootPrivateKey, NotBefore, NotAfter);
 
-        var pfx = service.ExportPkcs12(cert, keys.RootPrivateKeyPem, []);
+        var pfx = service.ExportPkcs12(cert, keys.RootPrivateKey, []);
         var (certPem, _) = service.ImportPkcs12(pfx, []);
 
         Assert.Equal(service.GetCertificateInfo(cert).Thumbprint, service.GetCertificateInfo(certPem).Thumbprint);
@@ -112,7 +143,7 @@ public class Pkcs12Tests(CertificateKeyFixture keys)
     public void ImportPkcs12_ValidDerButNotArchive_ThrowsCryptographicException()
     {
         var service = keys.NewService();
-        var cert = service.GenerateSelfSignedCertificate("CN=Not A PFX", keys.RootPrivateKeyPem, NotBefore, NotAfter);
+        var cert = service.GenerateSelfSignedCertificate("CN=Not A PFX", keys.RootPrivateKey, NotBefore, NotAfter);
         // Well-formed DER, but the wrong ASN.1 shape for a PKCS#12 — BouncyCastle's Pfx parser rejects it with a
         // raw ArgumentException, which must be mapped to CryptographicException (not leaked) like any unreadable archive.
         var derCertificate = service.ExportCertificateToDer(cert);
@@ -124,7 +155,7 @@ public class Pkcs12Tests(CertificateKeyFixture keys)
     public void ImportPkcs12_ValidArchiveWithNoKeyEntry_Throws()
     {
         var service = keys.NewService();
-        var cert = service.GenerateSelfSignedCertificate("CN=Cert Only", keys.RootPrivateKeyPem, NotBefore, NotAfter);
+        var cert = service.GenerateSelfSignedCertificate("CN=Cert Only", keys.RootPrivateKey, NotBefore, NotAfter);
         var password = "pass".ToCharArray();
         // A structurally valid, MAC-correct archive that carries only a certificate entry (no key entry).
         var certificateOnly = TestPkcs12Builder.CreateCertificateOnlyArchive(cert, password);
@@ -133,11 +164,46 @@ public class Pkcs12Tests(CertificateKeyFixture keys)
     }
 
     [Fact]
+    public void ImportPkcs12_NonRsaKeyEntry_Throws()
+    {
+        var service = keys.NewService();
+        var cert = service.GenerateSelfSignedCertificate("CN=Non-RSA Key", keys.RootPrivateKey, NotBefore, NotAfter);
+        var password = "pass".ToCharArray();
+        // A structurally valid, MAC-correct archive whose key entry is Ed25519: there is no RsaKey to hand back,
+        // so the archive is rejected as a bad argument rather than surfacing a mis-typed or raw BouncyCastle key.
+        var nonRsaArchive = TestPkcs12Builder.CreateNonRsaKeyArchive(cert, password);
+
+        Assert.Equal("pkcs12",
+            Assert.Throws<ArgumentException>(() => service.ImportPkcs12(nonRsaArchive, password)).ParamName);
+    }
+
+    [Fact]
+    public void ExportPkcs12_NullPrivateKey_Throws()
+    {
+        var service = keys.NewService();
+        var cert = service.GenerateSelfSignedCertificate("CN=Test", keys.RootPrivateKey, NotBefore, NotAfter);
+
+        Assert.Equal("privateKey", Assert.Throws<ArgumentNullException>(() =>
+            service.ExportPkcs12(cert, null!, "pass".ToCharArray())).ParamName);
+    }
+
+    [Fact]
+    public void ExportPkcs12_PublicOnlyKey_ThrowsArgumentExceptionNamingTheKey()
+    {
+        var service = keys.NewService();
+        var cert = service.GenerateSelfSignedCertificate("CN=Test", keys.RootPrivateKey, NotBefore, NotAfter);
+        var publicOnly = RsaKey.ImportPublicKeyPem(keys.RootPrivateKey.ExportPublicKeyPem());
+
+        Assert.Equal("privateKey", Assert.Throws<ArgumentException>(() =>
+            service.ExportPkcs12(cert, publicOnly, "pass".ToCharArray())).ParamName);
+    }
+
+    [Fact]
     public void ExportPkcs12_NullPassword_Throws()
     {
         var service = keys.NewService();
-        var cert = service.GenerateSelfSignedCertificate("CN=Test", keys.RootPrivateKeyPem, NotBefore, NotAfter);
+        var cert = service.GenerateSelfSignedCertificate("CN=Test", keys.RootPrivateKey, NotBefore, NotAfter);
 
-        Assert.Throws<ArgumentNullException>(() => service.ExportPkcs12(cert, keys.RootPrivateKeyPem, null!));
+        Assert.Throws<ArgumentNullException>(() => service.ExportPkcs12(cert, keys.RootPrivateKey, null!));
     }
 }

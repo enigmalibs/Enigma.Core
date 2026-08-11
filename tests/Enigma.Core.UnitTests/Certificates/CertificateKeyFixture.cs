@@ -8,7 +8,7 @@ namespace Enigma.Core.UnitTests.Certificates;
 /// Generate-once RSA-2048 key material shared across the certificate tests. RSA key generation is expensive,
 /// so a small set of independent private keys (root / intermediate / leaf, plus one password-encrypted key) is
 /// produced a single time through an xUnit collection fixture rather than regenerated per test. Every
-/// certificate operation takes only the private-key PEM; the public half is derived internally.
+/// certificate operation takes an <see cref="RsaKey"/> handle; the public half is derived internally.
 /// </summary>
 public sealed class CertificateKeyFixture
 {
@@ -18,26 +18,28 @@ public sealed class CertificateKeyFixture
     public CertificateKeyFixture()
     {
         var keyGen = new PublicKeyServiceFactory().CreatePublicKeyService();
-        (_, RootPrivateKeyPem) = keyGen.GenerateRsaKeyPair(2048);
-        (_, IntermediatePrivateKeyPem) = keyGen.GenerateRsaKeyPair(2048);
-        (_, LeafPrivateKeyPem) = keyGen.GenerateRsaKeyPair(2048);
-        (_, UnrelatedRootPrivateKeyPem) = keyGen.GenerateRsaKeyPair(2048);
-        (_, EncryptedPrivateKeyPem) = keyGen.GenerateRsaKeyPair(2048, EncryptedKeyPassword);
+        RootPrivateKey = keyGen.GenerateRsaKey(2048);
+        IntermediatePrivateKey = keyGen.GenerateRsaKey(2048);
+        LeafPrivateKey = keyGen.GenerateRsaKey(2048);
+        UnrelatedRootPrivateKey = keyGen.GenerateRsaKey(2048);
+        // The encrypted scenario stays a PEM: the passphrase is consumed once, at RsaKey.ImportPrivateKeyPem,
+        // which is the only place a password meets key material now that the certificate API takes handles.
+        EncryptedPrivateKeyPem = keyGen.GenerateRsaKey(2048).ExportPrivateKeyPem(EncryptedKeyPassword);
     }
 
-    /// <summary>An unencrypted 2048-bit RSA private key, PEM-encoded (used as the root / self-signed key).</summary>
-    public string RootPrivateKeyPem { get; }
+    /// <summary>An unencrypted 2048-bit RSA private key (used as the root / self-signed key).</summary>
+    public RsaKey RootPrivateKey { get; }
 
-    /// <summary>A second, independent unencrypted 2048-bit RSA private key, PEM-encoded (used as an intermediate CA key).</summary>
-    public string IntermediatePrivateKeyPem { get; }
+    /// <summary>A second, independent unencrypted 2048-bit RSA private key (used as an intermediate CA key).</summary>
+    public RsaKey IntermediatePrivateKey { get; }
 
-    /// <summary>A third, independent unencrypted 2048-bit RSA private key, PEM-encoded (used as a leaf / requester key).</summary>
-    public string LeafPrivateKeyPem { get; }
+    /// <summary>A third, independent unencrypted 2048-bit RSA private key (used as a leaf / requester key).</summary>
+    public RsaKey LeafPrivateKey { get; }
 
-    /// <summary>A fourth, independent unencrypted 2048-bit RSA private key, PEM-encoded (used as an unrelated/untrusted root key).</summary>
-    public string UnrelatedRootPrivateKeyPem { get; }
+    /// <summary>A fourth, independent unencrypted 2048-bit RSA private key (used as an unrelated/untrusted root key).</summary>
+    public RsaKey UnrelatedRootPrivateKey { get; }
 
-    /// <summary>A 2048-bit RSA private key encrypted (AES-256-CBC) under <see cref="EncryptedKeyPassword"/>, PEM-encoded.</summary>
+    /// <summary>A 2048-bit RSA private key encrypted (PBES2: PBKDF2-HMAC-SHA256 + AES-256-CBC) under <see cref="EncryptedKeyPassword"/>, PEM-encoded.</summary>
     public string EncryptedPrivateKeyPem { get; }
 
     /// <summary>Creates a fresh X.509 certificate service through the public factory.</summary>

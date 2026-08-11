@@ -6,8 +6,8 @@ Guidance for Claude Code (and other AI agents) working in this repository.
 
 **Enigma.Core** is a modern .NET cryptography library built on [BouncyCastle](https://www.bouncycastle.org/).
 It provides block & stream ciphers, RSA, post-quantum cryptography (ML-DSA / ML-KEM), X.509
-certificates, hashing, HMAC, one-time passwords, key derivation, padding, and data encoding — all
-behind a small, consistent, dependency-injection-friendly public surface.
+certificates, hashing, HMAC, one-time passwords, key derivation, padding, data encoding, and CRC
+checksums — all behind a small, consistent, dependency-injection-friendly public surface.
 
 ## Architecture
 
@@ -30,8 +30,8 @@ This is enforced by a reflection guard test,
 `tests/Enigma.Core.UnitTests/Api/BouncyCastleIsolationTests.cs`, which walks every exported type and
 fails the build if a BouncyCastle type is exposed. Keep this test green.
 
-**Async / progress / cancellation.** Streaming operations (block & stream ciphers, hashing, HMAC)
-expose `async` APIs that take an optional `IProgress<int>` (bytes processed) and a
+**Async / progress / cancellation.** Streaming operations (block & stream ciphers, hashing, HMAC,
+checksums) expose `async` APIs that take an optional `IProgress<int>` (bytes processed) and a
 `CancellationToken`.
 
 ## Project layout
@@ -50,11 +50,13 @@ src/Enigma.Core/                     The library
   Hashing/Hmac/                      HMAC-SHA1/256/512
   KeyDerivation/                     PBKDF2, Argon2
   Encoding/                          Base64, Base32, Hex
+  Checksum/                          CRC-16 (ARC, CCITT-FALSE, XMODEM, MODBUS, KERMIT), CRC-32 (ISO-HDLC, CRC-32C)
   Otp/                               HOTP, TOTP, otpauth:// provisioning
   Asymmetric/PublicKey/              RSA (encryption, signing, PEM)
-  Asymmetric/Pqc/                    ML-KEM, ML-DSA
+  Asymmetric/Pqc/                    ML-KEM, ML-DSA (+ PEM serialization per family)
   Certificates/                      X.509 generation, CSR, issuance, chain validation, CRL, PKCS#12/DER, info
   Extensions/                        EncodingExtensions, StreamExtensions (typed sync/async stream I/O)
+  Internal/                          Cross-category internals (PemEnvelope: the one PEM/PBES2 implementation)
   Utils/                             RandomUtils, CryptoDefaults
 tests/Enigma.Core.UnitTests/         xUnit v3 test suite (mirrors the src category layout)
   Api/                               Public-surface guard tests (incl. BouncyCastleIsolationTests)

@@ -1,4 +1,5 @@
 using System;
+using Enigma.Core.Asymmetric.PublicKey;
 using Enigma.Core.Certificates;
 using Xunit;
 
@@ -28,23 +29,23 @@ public class ChainValidationTests(CertificateKeyFixture keys)
     private static DateTimeOffset Ago(int days) => DateTimeOffset.UtcNow.AddDays(-days);
     private static DateTimeOffset FromNow(int days) => DateTimeOffset.UtcNow.AddDays(days);
 
-    private string RootCa(string dn, string keyPem) =>
-        keys.NewService().GenerateSelfSignedCertificate(dn, keyPem, Ago(1), FromNow(3650), options: CaOptions);
+    private string RootCa(string dn, RsaKey key) =>
+        keys.NewService().GenerateSelfSignedCertificate(dn, key, Ago(1), FromNow(3650), options: CaOptions);
 
-    private string Issue(string subjectDn, string subjectKeyPem, string issuerPem, string issuerKeyPem,
+    private string Issue(string subjectDn, RsaKey subjectKey, string issuerPem, RsaKey issuerKey,
         DateTimeOffset notBefore, DateTimeOffset notAfter, X509CertificateOptions options)
     {
         var service = keys.NewService();
-        var csr = service.GenerateCertificateSigningRequest(subjectDn, subjectKeyPem);
-        return service.IssueCertificate(csr, issuerPem, issuerKeyPem, notBefore, notAfter, options: options);
+        var csr = service.GenerateCertificateSigningRequest(subjectDn, subjectKey);
+        return service.IssueCertificate(csr, issuerPem, issuerKey, notBefore, notAfter, options: options);
     }
 
     [Fact]
     public void ValidateChain_FullChain_Succeeds()
     {
-        var root = RootCa("CN=Root CA", keys.RootPrivateKeyPem);
-        var intermediate = Issue("CN=Intermediate CA", keys.IntermediatePrivateKeyPem, root, keys.RootPrivateKeyPem, Ago(1), FromNow(1825), CaOptions);
-        var leaf = Issue("CN=leaf.example.com", keys.LeafPrivateKeyPem, intermediate, keys.IntermediatePrivateKeyPem, Ago(1), FromNow(365), LeafOptions);
+        var root = RootCa("CN=Root CA", keys.RootPrivateKey);
+        var intermediate = Issue("CN=Intermediate CA", keys.IntermediatePrivateKey, root, keys.RootPrivateKey, Ago(1), FromNow(1825), CaOptions);
+        var leaf = Issue("CN=leaf.example.com", keys.LeafPrivateKey, intermediate, keys.IntermediatePrivateKey, Ago(1), FromNow(365), LeafOptions);
 
         Assert.True(keys.NewService().ValidateChain(leaf, [root], [intermediate]));
     }
@@ -53,10 +54,10 @@ public class ChainValidationTests(CertificateKeyFixture keys)
     public void ValidateChain_TwoIntermediates_OrderIndependent_Succeeds()
     {
         // root -> int1 -> int2 -> leaf, built from four independent keys.
-        var root = RootCa("CN=Root CA", keys.RootPrivateKeyPem);
-        var int1 = Issue("CN=Intermediate 1 CA", keys.IntermediatePrivateKeyPem, root, keys.RootPrivateKeyPem, Ago(1), FromNow(1825), CaOptions);
-        var int2 = Issue("CN=Intermediate 2 CA", keys.UnrelatedRootPrivateKeyPem, int1, keys.IntermediatePrivateKeyPem, Ago(1), FromNow(1825), CaOptions);
-        var leaf = Issue("CN=leaf.example.com", keys.LeafPrivateKeyPem, int2, keys.UnrelatedRootPrivateKeyPem, Ago(1), FromNow(365), LeafOptions);
+        var root = RootCa("CN=Root CA", keys.RootPrivateKey);
+        var int1 = Issue("CN=Intermediate 1 CA", keys.IntermediatePrivateKey, root, keys.RootPrivateKey, Ago(1), FromNow(1825), CaOptions);
+        var int2 = Issue("CN=Intermediate 2 CA", keys.UnrelatedRootPrivateKey, int1, keys.IntermediatePrivateKey, Ago(1), FromNow(1825), CaOptions);
+        var leaf = Issue("CN=leaf.example.com", keys.LeafPrivateKey, int2, keys.UnrelatedRootPrivateKey, Ago(1), FromNow(365), LeafOptions);
 
         var service = keys.NewService();
         // Both leaf->root order and the common top-down CA-bundle order must validate — the service builds the
@@ -68,13 +69,13 @@ public class ChainValidationTests(CertificateKeyFixture keys)
     [Fact]
     public void ValidateChain_ImposterRootSameDnDifferentKey_Fails()
     {
-        var root = RootCa("CN=Root CA", keys.RootPrivateKeyPem);
-        var intermediate = Issue("CN=Intermediate CA", keys.IntermediatePrivateKeyPem, root, keys.RootPrivateKeyPem, Ago(1), FromNow(1825), CaOptions);
-        var leaf = Issue("CN=leaf.example.com", keys.LeafPrivateKeyPem, intermediate, keys.IntermediatePrivateKeyPem, Ago(1), FromNow(365), LeafOptions);
+        var root = RootCa("CN=Root CA", keys.RootPrivateKey);
+        var intermediate = Issue("CN=Intermediate CA", keys.IntermediatePrivateKey, root, keys.RootPrivateKey, Ago(1), FromNow(1825), CaOptions);
+        var leaf = Issue("CN=leaf.example.com", keys.LeafPrivateKey, intermediate, keys.IntermediatePrivateKey, Ago(1), FromNow(365), LeafOptions);
 
         // An imposter root that shares the real root's subject DN but uses a DIFFERENT key must NOT be trusted:
         // trust is cryptographic (the anchor must have signed the path), not name-based.
-        var imposterRoot = RootCa("CN=Root CA", keys.UnrelatedRootPrivateKeyPem);
+        var imposterRoot = RootCa("CN=Root CA", keys.UnrelatedRootPrivateKey);
 
         Assert.False(keys.NewService().ValidateChain(leaf, [imposterRoot], [intermediate]));
     }
@@ -82,9 +83,9 @@ public class ChainValidationTests(CertificateKeyFixture keys)
     [Fact]
     public void ValidateChain_LeafAgainstRootOnly_MissingIntermediate_Fails()
     {
-        var root = RootCa("CN=Root CA", keys.RootPrivateKeyPem);
-        var intermediate = Issue("CN=Intermediate CA", keys.IntermediatePrivateKeyPem, root, keys.RootPrivateKeyPem, Ago(1), FromNow(1825), CaOptions);
-        var leaf = Issue("CN=leaf.example.com", keys.LeafPrivateKeyPem, intermediate, keys.IntermediatePrivateKeyPem, Ago(1), FromNow(365), LeafOptions);
+        var root = RootCa("CN=Root CA", keys.RootPrivateKey);
+        var intermediate = Issue("CN=Intermediate CA", keys.IntermediatePrivateKey, root, keys.RootPrivateKey, Ago(1), FromNow(1825), CaOptions);
+        var leaf = Issue("CN=leaf.example.com", keys.LeafPrivateKey, intermediate, keys.IntermediatePrivateKey, Ago(1), FromNow(365), LeafOptions);
 
         // The intermediate is not supplied, so the path cannot be built.
         Assert.False(keys.NewService().ValidateChain(leaf, [root]));
@@ -93,7 +94,7 @@ public class ChainValidationTests(CertificateKeyFixture keys)
     [Fact]
     public void ValidateChain_SelfSignedRootAgainstItself_Succeeds()
     {
-        var root = RootCa("CN=Root CA", keys.RootPrivateKeyPem);
+        var root = RootCa("CN=Root CA", keys.RootPrivateKey);
 
         Assert.True(keys.NewService().ValidateChain(root, [root]));
     }
@@ -101,11 +102,11 @@ public class ChainValidationTests(CertificateKeyFixture keys)
     [Fact]
     public void ValidateChain_UntrustedRoot_Fails()
     {
-        var root = RootCa("CN=Root CA", keys.RootPrivateKeyPem);
-        var intermediate = Issue("CN=Intermediate CA", keys.IntermediatePrivateKeyPem, root, keys.RootPrivateKeyPem, Ago(1), FromNow(1825), CaOptions);
-        var leaf = Issue("CN=leaf.example.com", keys.LeafPrivateKeyPem, intermediate, keys.IntermediatePrivateKeyPem, Ago(1), FromNow(365), LeafOptions);
+        var root = RootCa("CN=Root CA", keys.RootPrivateKey);
+        var intermediate = Issue("CN=Intermediate CA", keys.IntermediatePrivateKey, root, keys.RootPrivateKey, Ago(1), FromNow(1825), CaOptions);
+        var leaf = Issue("CN=leaf.example.com", keys.LeafPrivateKey, intermediate, keys.IntermediatePrivateKey, Ago(1), FromNow(365), LeafOptions);
 
-        var unrelatedRoot = RootCa("CN=Unrelated Root CA", keys.UnrelatedRootPrivateKeyPem);
+        var unrelatedRoot = RootCa("CN=Unrelated Root CA", keys.UnrelatedRootPrivateKey);
 
         Assert.False(keys.NewService().ValidateChain(leaf, [unrelatedRoot], [intermediate]));
     }
@@ -113,8 +114,8 @@ public class ChainValidationTests(CertificateKeyFixture keys)
     [Fact]
     public void ValidateChain_ExpiredLeaf_Fails()
     {
-        var root = RootCa("CN=Root CA", keys.RootPrivateKeyPem);
-        var expiredLeaf = Issue("CN=Expired Leaf", keys.LeafPrivateKeyPem, root, keys.RootPrivateKeyPem, Ago(1095), Ago(365), LeafOptions);
+        var root = RootCa("CN=Root CA", keys.RootPrivateKey);
+        var expiredLeaf = Issue("CN=Expired Leaf", keys.LeafPrivateKey, root, keys.RootPrivateKey, Ago(1095), Ago(365), LeafOptions);
 
         Assert.False(keys.NewService().ValidateChain(expiredLeaf, [root]));
     }
@@ -122,8 +123,8 @@ public class ChainValidationTests(CertificateKeyFixture keys)
     [Fact]
     public void ValidateChain_NotYetValidLeaf_Fails()
     {
-        var root = RootCa("CN=Root CA", keys.RootPrivateKeyPem);
-        var futureLeaf = Issue("CN=Future Leaf", keys.LeafPrivateKeyPem, root, keys.RootPrivateKeyPem, FromNow(365), FromNow(730), LeafOptions);
+        var root = RootCa("CN=Root CA", keys.RootPrivateKey);
+        var futureLeaf = Issue("CN=Future Leaf", keys.LeafPrivateKey, root, keys.RootPrivateKey, FromNow(365), FromNow(730), LeafOptions);
 
         Assert.False(keys.NewService().ValidateChain(futureLeaf, [root]));
     }
@@ -131,7 +132,7 @@ public class ChainValidationTests(CertificateKeyFixture keys)
     [Fact]
     public void ValidateChain_EmptyTrustAnchors_Fails()
     {
-        var root = RootCa("CN=Root CA", keys.RootPrivateKeyPem);
+        var root = RootCa("CN=Root CA", keys.RootPrivateKey);
 
         Assert.False(keys.NewService().ValidateChain(root, []));
     }
@@ -139,7 +140,7 @@ public class ChainValidationTests(CertificateKeyFixture keys)
     [Fact]
     public void ValidateChain_NullTrustAnchors_Throws()
     {
-        var root = RootCa("CN=Root CA", keys.RootPrivateKeyPem);
+        var root = RootCa("CN=Root CA", keys.RootPrivateKey);
 
         Assert.Throws<ArgumentNullException>(() => keys.NewService().ValidateChain(root, null!));
     }
@@ -147,7 +148,7 @@ public class ChainValidationTests(CertificateKeyFixture keys)
     [Fact]
     public void ValidateChain_MalformedLeafPem_Throws()
     {
-        var root = RootCa("CN=Root CA", keys.RootPrivateKeyPem);
+        var root = RootCa("CN=Root CA", keys.RootPrivateKey);
 
         Assert.Throws<ArgumentException>(() => keys.NewService().ValidateChain("not a certificate", [root]));
     }

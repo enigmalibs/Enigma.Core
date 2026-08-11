@@ -24,9 +24,9 @@ public class RsaSignatureAlgorithmTests(RsaKeyFixture keys)
         var service = Service();
         var data = System.Text.Encoding.UTF8.GetBytes($"signed with {algorithm}");
 
-        var signature = service.Sign(data, keys.PrivateKeyPem, algorithm);
+        var signature = service.Sign(data, keys.PrivateKey, algorithm);
 
-        Assert.True(service.Verify(data, signature, keys.PublicKeyPem, algorithm));
+        Assert.True(service.Verify(data, signature, keys.PublicKey, algorithm));
     }
 
     [Fact]
@@ -36,8 +36,8 @@ public class RsaSignatureAlgorithmTests(RsaKeyFixture keys)
         var data = System.Text.Encoding.UTF8.GetBytes("default signature algorithm");
 
         // The default Sign must be verifiable by an explicit SHA-256 Verify.
-        var signature = service.Sign(data, keys.PrivateKeyPem);
+        var signature = service.Sign(data, keys.PrivateKey);
 
-        Assert.True(service.Verify(data, signature, keys.PublicKeyPem, RsaSignatureAlgorithm.Sha256WithRsa));
+        Assert.True(service.Verify(data, signature, keys.PublicKey, RsaSignatureAlgorithm.Sha256WithRsa));
     }
 }

@@ -3,7 +3,10 @@
 Enigma.Core provides NIST-standardised post-quantum primitives through the same
 service + factory pattern as the rest of the library. You create a factory with
 `new`, ask it for a service at the security level you want, and get back a small,
-focused interface that works entirely in raw `byte[]` values.
+focused interface. The cryptographic operations work entirely in raw `byte[]`
+values; a separate PEM service per family serializes those keys to and from PEM
+text when you need to store or publish them — see
+[PEM serialization](#pem-serialization).
 
 Two algorithm families are covered, both built on module lattices and both
 believed to resist attacks by large-scale quantum computers:
@@ -49,6 +52,13 @@ factory creates the service, not per call.
 | `IMLDsaServiceFactory` | ML-DSA factory interface. DI-friendly. |
 | `IMLDsaService` | The ML-DSA service returned by the factory. |
 | `MLDsaParameterSet` | Enum selecting the ML-DSA security level. |
+| `MLDsaPemServiceFactory` | Concrete ML-DSA PEM factory. Implements `IMLDsaPemServiceFactory`. Create with `new`. |
+| `IMLDsaPemServiceFactory` | ML-DSA PEM factory interface. DI-friendly. |
+| `IMLDsaPemService` | Converts ML-DSA keys between raw bytes and PEM text. |
+| `MLKemPemServiceFactory` | Concrete ML-KEM PEM factory. Implements `IMLKemPemServiceFactory`. Create with `new`. |
+| `IMLKemPemServiceFactory` | ML-KEM PEM factory interface. DI-friendly. |
+| `IMLKemPemService` | Converts ML-KEM keys between raw bytes and PEM text. |
+| `MLPrivateKeyPemFormat` | Enum selecting which representation of a private key a PEM stores. Shared by both families. |
 
 The factory methods return the service interfaces:
 
@@ -154,11 +164,246 @@ To sign deterministically, create the service with `deterministic: true`:
 IMLDsaService dsa = dsaFactory.CreateMLDsaService(MLDsaParameterSet.MLDsa65, deterministic: true);
 ```
 
+## PEM serialization
+
+`IMLKemService` and `IMLDsaService` work in raw `byte[]` keys, which is what the FIPS algorithms
+themselves are defined on. To store a key in a file, paste it into a config, or hand it to another
+tool, wrap it in PEM instead — a separate service per family handles that, and nothing about the
+signing/encapsulation services changes.
+
+Reading a PEM gives you something the raw `byte[]` API cannot: the **parameter set comes back with
+the key**, recovered from the algorithm OID in the envelope. You never have to remember alongside
+the file whether it holds an ML-DSA-44 or an ML-DSA-87 key.
+
+### ML-DSA key PEM
+
+`IMLDsaPemService` writes and reads the three standard envelopes:
+
+| PEM label | Written when | Contents |
+|-----------|--------------|----------|
+| `PUBLIC KEY` | any public-key write | X.509 `SubjectPublicKeyInfo` |
+| `PRIVATE KEY` | private-key write, no password | PKCS#8 `PrivateKeyInfo` |
+| `ENCRYPTED PRIVATE KEY` | private-key write with a password | PKCS#8 `EncryptedPrivateKeyInfo` |
+
+Encryption is PBES2: PBKDF2-HMAC-SHA256 with a 16-byte salt and 600,000 iterations, then
+AES-256-CBC. That iteration count follows current OWASP guidance and costs roughly 0.6 s each time a
+key is written or read — a deliberate one-time cost per import, not a per-operation one.
+
+A private-key PEM can store the key in three ways, selected with `MLPrivateKeyPemFormat`:
+
+| Value | PKCS#8 body (ML-DSA-65) | PEM size | |
+|-------|------------------------:|---------:|--|
+| `Seed` | 54 bytes | ~130 chars | The default. Smallest by far |
+| `ExpandedKey` | 4,060 bytes | ~5,600 chars | Most interoperable |
+| `SeedAndExpandedKey` | 4,098 bytes | ~5,650 chars | Both representations |
+
+All three are lossless: a `Seed` PEM is expanded when it is read, so `FromPrivateKeyPem` always
+hands back the **expanded** FIPS 204 encoding — exactly what `IMLDsaService.Sign` accepts.
+
+The format can only be chosen when the PEM service generates the key itself, via
+`GenerateKeyPairPem`. An expanded FIPS 204 private key does not contain the seed it was derived
+from, so `ToPrivateKeyPem` — which serializes a key you already hold — always writes `ExpandedKey`
+and takes no format argument.
+
+```csharp
+IMLDsaPemService CreateMLDsaPemService();
+```
+
+`IMLDsaPemService` exposes five methods:
+
+```csharp
+(string publicKeyPem, string privateKeyPem) GenerateKeyPairPem(
+    MLDsaParameterSet parameterSet,
+    char[]? password = null,
+    MLPrivateKeyPemFormat format = MLPrivateKeyPemFormat.Seed);
+
+string ToPublicKeyPem(byte[] publicKey, MLDsaParameterSet parameterSet);
+string ToPrivateKeyPem(byte[] privateKey, MLDsaParameterSet parameterSet, char[]? password = null);
+
+(byte[] publicKey, MLDsaParameterSet parameterSet) FromPublicKeyPem(string pem);
+(byte[] privateKey, MLDsaParameterSet parameterSet) FromPrivateKeyPem(string pem, char[]? password = null);
+```
+
+#### Generate a password-protected key pair as PEM, then sign with it
+
+```csharp
+using System;
+using Enigma.Core.Asymmetric.Pqc;
+using Enigma.Core.Extensions;
+
+var pemFactory = new MLDsaPemServiceFactory();
+IMLDsaPemService pem = pemFactory.CreateMLDsaPemService();
+
+char[] password = "correct horse battery staple".ToCharArray();
+
+// Generate straight to PEM. The private key is stored as its 32-byte seed (the default), so the
+// encrypted PEM is a few lines rather than a few thousand characters.
+(string publicKeyPem, string privateKeyPem) =
+    pem.GenerateKeyPairPem(MLDsaParameterSet.MLDsa65, password);
+
+Console.WriteLine(privateKeyPem);   // -----BEGIN ENCRYPTED PRIVATE KEY-----
+
+// Read them back. The parameter set arrives with the key, decoded from the algorithm OID.
+(byte[] privateKey, MLDsaParameterSet parameterSet) = pem.FromPrivateKeyPem(privateKeyPem, password);
+(byte[] publicKey, _) = pem.FromPublicKeyPem(publicKeyPem);
+
+// Both are the expanded FIPS 204 encodings, so they go straight into the signing service.
+IMLDsaService dsa = new MLDsaServiceFactory().CreateMLDsaService(parameterSet);
+
+byte[] message = "message".GetUtf8Bytes();
+byte[] signature = dsa.Sign(message, privateKey);
+Console.WriteLine($"Signature valid: {dsa.Verify(message, signature, publicKey)}");
+
+// The library never clears your passphrase — you own its lifetime.
+Array.Clear(password, 0, password.Length);
+```
+
+#### Serialize keys you already hold
+
+```csharp
+using Enigma.Core.Asymmetric.Pqc;
+
+IMLDsaService dsa = new MLDsaServiceFactory().CreateMLDsaService(MLDsaParameterSet.MLDsa65);
+(byte[] publicKey, byte[] privateKey) = dsa.GenerateKeyPair();
+
+IMLDsaPemService pem = new MLDsaPemServiceFactory().CreateMLDsaPemService();
+
+// Round-trips byte-identically: what you read back equals what you wrote.
+string publicKeyPem = pem.ToPublicKeyPem(publicKey, MLDsaParameterSet.MLDsa65);
+string privateKeyPem = pem.ToPrivateKeyPem(privateKey, MLDsaParameterSet.MLDsa65);
+
+(byte[] samePublicKey, _) = pem.FromPublicKeyPem(publicKeyPem);
+(byte[] samePrivateKey, _) = pem.FromPrivateKeyPem(privateKeyPem);
+```
+
+#### Choosing a private-key format explicitly
+
+```csharp
+using Enigma.Core.Asymmetric.Pqc;
+
+IMLDsaPemService pem = new MLDsaPemServiceFactory().CreateMLDsaPemService();
+
+// A larger PEM, but readable by any implementation that does not support seed expansion.
+(string publicKeyPem, string privateKeyPem) = pem.GenerateKeyPairPem(
+    MLDsaParameterSet.MLDsa65,
+    password: null,
+    format: MLPrivateKeyPemFormat.ExpandedKey);
+```
+
+### ML-KEM key PEM
+
+`IMLKemPemService` is the same contract for the other family: the same three envelopes, the same
+PBES2 encryption, the same `MLPrivateKeyPemFormat` enum — only the parameter-set type and the key
+sizes differ.
+
+| Value | PKCS#8 body (ML-KEM-768) | PEM size | |
+|-------|-------------------------:|---------:|--|
+| `Seed` | 86 bytes | ~170 chars | The default. Smallest by far |
+| `ExpandedKey` | 2,428 bytes | ~3,350 chars | Most interoperable |
+| `SeedAndExpandedKey` | 2,498 bytes | ~3,440 chars | Both representations |
+
+The ML-KEM seed is 64 bytes (ML-DSA's is 32). As with ML-DSA, `FromPrivateKeyPem` always hands back
+the **expanded** FIPS 203 decapsulation key — exactly what `IMLKemService.Decapsulate` accepts —
+whichever format the PEM stored, and `ToPrivateKeyPem` takes no format argument because an expanded
+key no longer contains the seed it came from.
+
+```csharp
+IMLKemPemService CreateMLKemPemService();
+```
+
+`IMLKemPemService` exposes five methods:
+
+```csharp
+(string publicKeyPem, string privateKeyPem) GenerateKeyPairPem(
+    MLKemParameterSet parameterSet,
+    char[]? password = null,
+    MLPrivateKeyPemFormat format = MLPrivateKeyPemFormat.Seed);
+
+string ToPublicKeyPem(byte[] publicKey, MLKemParameterSet parameterSet);
+string ToPrivateKeyPem(byte[] privateKey, MLKemParameterSet parameterSet, char[]? password = null);
+
+(byte[] publicKey, MLKemParameterSet parameterSet) FromPublicKeyPem(string pem);
+(byte[] privateKey, MLKemParameterSet parameterSet) FromPrivateKeyPem(string pem, char[]? password = null);
+```
+
+#### Distribute a public key as PEM, keep the private key encrypted
+
+This is the shape most ML-KEM deployments want: the recipient publishes the `PUBLIC KEY` PEM and
+keeps an `ENCRYPTED PRIVATE KEY` PEM on disk.
+
+```csharp
+using System;
+using Enigma.Core.Asymmetric.Pqc;
+using Enigma.Core.Extensions;
+
+IMLKemPemService pem = new MLKemPemServiceFactory().CreateMLKemPemService();
+
+char[] password = "correct horse battery staple".ToCharArray();
+
+// The recipient generates a key pair straight to PEM and publishes only the public half.
+(string publicKeyPem, string privateKeyPem) =
+    pem.GenerateKeyPairPem(MLKemParameterSet.MLKem768, password);
+
+// --- sender side: only the public-key PEM is needed ---
+(byte[] recipientPublicKey, MLKemParameterSet parameterSet) = pem.FromPublicKeyPem(publicKeyPem);
+
+IMLKemService kem = new MLKemServiceFactory().CreateMLKemService(parameterSet);
+(byte[] ciphertext, byte[] senderSecret) = kem.Encapsulate(recipientPublicKey);
+
+// --- recipient side: unlock the private-key PEM and recover the same secret ---
+(byte[] recipientPrivateKey, _) = pem.FromPrivateKeyPem(privateKeyPem, password);
+byte[] recipientSecret = kem.Decapsulate(ciphertext, recipientPrivateKey);
+
+Console.WriteLine($"Shared secret: {recipientSecret.ToHexString()}");
+Console.WriteLine($"Secrets match: {senderSecret.ToHexString() == recipientSecret.ToHexString()}");
+
+// The library never clears your passphrase — you own its lifetime.
+Array.Clear(password, 0, password.Length);
+```
+
+#### Serialize ML-KEM keys you already hold
+
+```csharp
+using Enigma.Core.Asymmetric.Pqc;
+
+IMLKemService kem = new MLKemServiceFactory().CreateMLKemService(MLKemParameterSet.MLKem768);
+(byte[] publicKey, byte[] privateKey) = kem.GenerateKeyPair();
+
+IMLKemPemService pem = new MLKemPemServiceFactory().CreateMLKemPemService();
+
+// Round-trips byte-identically: what you read back equals what you wrote.
+string publicKeyPem = pem.ToPublicKeyPem(publicKey, MLKemParameterSet.MLKem768);
+string privateKeyPem = pem.ToPrivateKeyPem(privateKey, MLKemParameterSet.MLKem768);
+
+(byte[] samePublicKey, _) = pem.FromPublicKeyPem(publicKeyPem);
+(byte[] samePrivateKey, _) = pem.FromPrivateKeyPem(privateKeyPem);
+```
+
+### Error handling
+
+Both PEM services follow the same contract as the rest of the library:
+
+| Situation | Exception |
+|-----------|-----------|
+| A `null` argument | `ArgumentNullException` |
+| Empty, malformed, or truncated PEM text | `ArgumentException` |
+| A PEM holding the wrong kind of key (a public key where a private one is expected, another algorithm, an unsupported parameter set) | `ArgumentException` |
+| Key bytes of the wrong length for the parameter set | `ArgumentException` |
+| An encrypted PEM read with no password, or with the wrong one | `CryptographicException` |
+| An undefined enum value | `ArgumentOutOfRangeException` |
+
+No BouncyCastle exception ever reaches your code; where one caused the failure it is preserved as
+the `InnerException`.
+
 ## Notes
 
 - Keys, ciphertexts and signatures are raw `byte[]` values in their FIPS 203 /
   FIPS 204 encodings. Private keys are the **expanded** encodings, so they are
   directly usable by `Decapsulate` and `Sign` with no seed re-derivation.
+- **PEM is opt-in and additive:** `IMLDsaService` and `IMLKemService` are unchanged
+  by it. Reach for `IMLDsaPemService` / `IMLKemPemService` when a key has to leave
+  the process as text; keep using the `byte[]` API when it does not. Both describe
+  the same keys, and a key can move between the two freely.
 - **ML-KEM shared-secret flow:** the sender calls `Encapsulate(recipientPublicKey)`
   to obtain `(ciphertext, sharedSecret)` and transmits only the `ciphertext`; the
   recipient calls `Decapsulate(ciphertext, privateKey)` to recover the same

@@ -1,13 +1,17 @@
 using System;
 using System.Security.Cryptography;
+using Enigma.Core.Asymmetric.PublicKey;
 using Enigma.Core.Certificates;
 using Xunit;
 
 namespace Enigma.Core.UnitTests.Certificates;
 
 /// <summary>
-/// Password handling for encrypted private-key PEMs across generation, CSR and issuance: the correct passphrase
-/// unlocks the key, a wrong or missing passphrase surfaces a <see cref="CryptographicException"/>, and the
+/// Password handling for encrypted private-key PEMs across generation, CSR and issuance. The passphrase is no
+/// longer supplied per certificate call: it is consumed once, at <see cref="RsaKey.ImportPrivateKeyPem"/>, and
+/// the resulting handle drives the certificate operations. So the correct passphrase unlocks a key that then
+/// generates, requests and issues certificates normally, while a wrong or missing passphrase surfaces a
+/// <see cref="CryptographicException"/> at the import — before any certificate operation is reached. The
 /// unencrypted path (a <see langword="null"/> password) is exercised throughout the other certificate tests.
 /// </summary>
 [Collection(CertificateKeyCollection.Name)]
@@ -18,35 +22,36 @@ public class EncryptedKeyPemTests(CertificateKeyFixture keys)
 
     private static char[] WrongPassword => "wrong password".ToCharArray();
 
+    private RsaKey EncryptedKey() => RsaKey.ImportPrivateKeyPem(keys.EncryptedPrivateKeyPem, keys.EncryptedKeyPassword);
+
     [Fact]
     public void GenerateSelfSigned_EncryptedKey_CorrectPassword_Succeeds()
     {
         var pem = keys.NewService().GenerateSelfSignedCertificate(
-            "CN=Encrypted", keys.EncryptedPrivateKeyPem, NotBefore, NotAfter, password: keys.EncryptedKeyPassword);
+            "CN=Encrypted", EncryptedKey(), NotBefore, NotAfter);
 
         Assert.Contains("BEGIN CERTIFICATE", pem);
     }
 
     [Fact]
-    public void GenerateSelfSigned_EncryptedKey_WrongPassword_ThrowsCryptographicException()
+    public void ImportEncryptedKey_WrongPassword_ThrowsCryptographicException()
     {
-        Assert.Throws<CryptographicException>(() => keys.NewService().GenerateSelfSignedCertificate(
-            "CN=Encrypted", keys.EncryptedPrivateKeyPem, NotBefore, NotAfter, password: WrongPassword));
+        Assert.Throws<CryptographicException>(() =>
+            RsaKey.ImportPrivateKeyPem(keys.EncryptedPrivateKeyPem, WrongPassword));
     }
 
     [Fact]
-    public void GenerateSelfSigned_EncryptedKey_NoPassword_ThrowsCryptographicException()
+    public void ImportEncryptedKey_NoPassword_ThrowsCryptographicException()
     {
-        Assert.Throws<CryptographicException>(() => keys.NewService().GenerateSelfSignedCertificate(
-            "CN=Encrypted", keys.EncryptedPrivateKeyPem, NotBefore, NotAfter, password: null));
+        Assert.Throws<CryptographicException>(() =>
+            RsaKey.ImportPrivateKeyPem(keys.EncryptedPrivateKeyPem, password: null));
     }
 
     [Fact]
     public void GenerateCsr_EncryptedKey_CorrectPassword_Succeeds()
     {
         var service = keys.NewService();
-        var csrPem = service.GenerateCertificateSigningRequest(
-            "CN=Encrypted", keys.EncryptedPrivateKeyPem, password: keys.EncryptedKeyPassword);
+        var csrPem = service.GenerateCertificateSigningRequest("CN=Encrypted", EncryptedKey());
 
         Assert.True(service.IsCertificateSigningRequestValid(csrPem));
     }
@@ -55,29 +60,34 @@ public class EncryptedKeyPemTests(CertificateKeyFixture keys)
     public void IssueCertificate_EncryptedIssuerKey_CorrectPassword_Succeeds()
     {
         var service = keys.NewService();
+        var issuerKey = EncryptedKey();
         var caPem = service.GenerateSelfSignedCertificate(
-            "CN=Encrypted CA", keys.EncryptedPrivateKeyPem, NotBefore, NotAfter,
-            password: keys.EncryptedKeyPassword,
+            "CN=Encrypted CA", issuerKey, NotBefore, NotAfter,
             options: new X509CertificateOptions { IsCertificateAuthority = true, KeyUsage = X509KeyUsage.KeyCertSign });
-        var csrPem = service.GenerateCertificateSigningRequest("CN=Leaf", keys.LeafPrivateKeyPem);
+        var csrPem = service.GenerateCertificateSigningRequest("CN=Leaf", keys.LeafPrivateKey);
 
-        var leafPem = service.IssueCertificate(
-            csrPem, caPem, keys.EncryptedPrivateKeyPem, NotBefore, NotAfter, password: keys.EncryptedKeyPassword);
+        var leafPem = service.IssueCertificate(csrPem, caPem, issuerKey, NotBefore, NotAfter);
 
         Assert.Equal(service.GetCertificateInfo(caPem).Subject, service.GetCertificateInfo(leafPem).Issuer);
     }
 
     [Fact]
-    public void IssueCertificate_EncryptedIssuerKey_WrongPassword_ThrowsCryptographicException()
+    public void EncryptedKey_ImportedOnce_ServesEveryCertificateOperation()
     {
+        // The point of the migration: one import, then generation, CSR and issuance all run off the same handle
+        // with no passphrase in sight. (Replaces the second wrong-password test, which asserted a wrong passphrase
+        // at an issuance call site that no longer takes one — it had collapsed onto the import assertion above.)
         var service = keys.NewService();
-        var caPem = service.GenerateSelfSignedCertificate(
-            "CN=Encrypted CA", keys.EncryptedPrivateKeyPem, NotBefore, NotAfter,
-            password: keys.EncryptedKeyPassword,
-            options: new X509CertificateOptions { IsCertificateAuthority = true });
-        var csrPem = service.GenerateCertificateSigningRequest("CN=Leaf", keys.LeafPrivateKeyPem);
+        var issuerKey = EncryptedKey();
 
-        Assert.Throws<CryptographicException>(() => service.IssueCertificate(
-            csrPem, caPem, keys.EncryptedPrivateKeyPem, NotBefore, NotAfter, password: WrongPassword));
+        var caPem = service.GenerateSelfSignedCertificate(
+            "CN=Encrypted CA", issuerKey, NotBefore, NotAfter,
+            options: new X509CertificateOptions { IsCertificateAuthority = true, KeyUsage = X509KeyUsage.KeyCertSign });
+        var csrPem = service.GenerateCertificateSigningRequest("CN=Encrypted Requester", issuerKey);
+        var leafPem = service.IssueCertificate(csrPem, caPem, issuerKey, NotBefore, NotAfter);
+
+        Assert.True(service.IsCertificateSigningRequestValid(csrPem));
+        Assert.Contains("CN=Encrypted Requester", service.GetCertificateInfo(leafPem).Subject);
+        Assert.Equal(service.GetCertificateInfo(caPem).Subject, service.GetCertificateInfo(leafPem).Issuer);
     }
 }

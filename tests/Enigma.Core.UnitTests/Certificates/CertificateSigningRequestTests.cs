@@ -1,4 +1,5 @@
 using System;
+using Enigma.Core.Asymmetric.PublicKey;
 using Enigma.Core.Certificates;
 using Xunit;
 
@@ -13,7 +14,7 @@ namespace Enigma.Core.UnitTests.Certificates;
 public class CertificateSigningRequestTests(CertificateKeyFixture keys)
 {
     private string Csr(string dn) =>
-        keys.NewService().GenerateCertificateSigningRequest(dn, keys.LeafPrivateKeyPem);
+        keys.NewService().GenerateCertificateSigningRequest(dn, keys.LeafPrivateKey);
 
     [Fact]
     public void GenerateCsr_ReturnsCsrPem()
@@ -44,7 +45,7 @@ public class CertificateSigningRequestTests(CertificateKeyFixture keys)
     public void IsCertificateSigningRequestValid_CertificatePemInsteadOfCsr_Throws()
     {
         var certificatePem = keys.NewService().GenerateSelfSignedCertificate(
-            "CN=Test", keys.RootPrivateKeyPem,
+            "CN=Test", keys.RootPrivateKey,
             new DateTimeOffset(2025, 1, 1, 0, 0, 0, TimeSpan.Zero),
             new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero));
 
@@ -55,6 +56,22 @@ public class CertificateSigningRequestTests(CertificateKeyFixture keys)
     public void IsCertificateSigningRequestValid_EmptyPem_Throws()
     {
         Assert.Throws<ArgumentException>(() => keys.NewService().IsCertificateSigningRequestValid("   "));
+    }
+
+    [Fact]
+    public void GenerateCsr_NullPrivateKey_Throws()
+    {
+        Assert.Equal("privateKey", Assert.Throws<ArgumentNullException>(() =>
+            keys.NewService().GenerateCertificateSigningRequest("CN=Test", null!)).ParamName);
+    }
+
+    [Fact]
+    public void GenerateCsr_PublicOnlyKey_ThrowsArgumentExceptionNamingTheKey()
+    {
+        var publicOnly = RsaKey.ImportPublicKeyPem(keys.LeafPrivateKey.ExportPublicKeyPem());
+
+        Assert.Equal("privateKey", Assert.Throws<ArgumentException>(() =>
+            keys.NewService().GenerateCertificateSigningRequest("CN=Test", publicOnly)).ParamName);
     }
 
     // Replaces the first full line of base64 body with a same-length run of 'A's, corrupting the encoded structure.

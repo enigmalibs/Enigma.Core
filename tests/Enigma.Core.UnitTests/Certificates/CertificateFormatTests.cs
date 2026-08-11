@@ -17,7 +17,7 @@ public class CertificateFormatTests(CertificateKeyFixture keys)
     private static readonly DateTimeOffset NotAfter = new(2035, 1, 1, 0, 0, 0, TimeSpan.Zero);
 
     private string SelfSigned(string dn) =>
-        keys.NewService().GenerateSelfSignedCertificate(dn, keys.RootPrivateKeyPem, NotBefore, NotAfter);
+        keys.NewService().GenerateSelfSignedCertificate(dn, keys.RootPrivateKey, NotBefore, NotAfter);
 
     [Fact]
     public void ExportImportDer_RoundTrip_PreservesCertificate()

@@ -42,7 +42,8 @@ git pull
 ## 3. Tag the release
 
 Match the repo's existing tag convention — run `git tag` to see how prior releases were tagged (bare `X.Y.Z`
-vs. `vX.Y.Z`). This repo has no tags yet, so use a **bare** `X.Y.Z` tag. Tag the merge commit and push the tag:
+vs. `vX.Y.Z`). Prior releases here are tagged **bare** (`1.0.0`, `1.1.0`), so continue with a bare `X.Y.Z`
+tag. Tag the merge commit and push the tag:
 
 ```bash
 git tag X.Y.Z
