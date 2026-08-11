@@ -39,3 +39,12 @@ records in `docs/done/<ID>.md`. Row order is the work order (append new items la
 | FEATURE-797D | BouncyCastle 2.7.0 upgrade & v1.1.0 release | DONE | docs/plan/FEATURE-797D.md |
 | - PHASE01 | Upgrade to BouncyCastle 2.7.0 | DONE | (in FEATURE-797D.md) |
 | - PHASE02 | Release v1.1.0 | DONE | (in FEATURE-797D.md) |
+| FEATURE-5413 | PQC PEM services (ML-DSA / ML-KEM) | TODO | docs/plan/FEATURE-5413.md |
+| - PHASE01 | Shared PEM internals + ML-DSA PEM service | TODO | (in FEATURE-5413.md) |
+| - PHASE02 | ML-KEM PEM service | TODO | (in FEATURE-5413.md) |
+| FEATURE-6852 | RsaKey handle for the PublicKey module (BREAKING) | TODO | docs/plan/FEATURE-6852.md |
+| - PHASE01 | RsaKey + PBES2 write / three-format read (additive) | TODO | (in FEATURE-6852.md) |
+| - PHASE02 | Cut the PEM-string surface (BREAKING) | TODO | (in FEATURE-6852.md) |
+| FEATURE-57A9 | Certificates on the RsaKey handle (BREAKING) | TODO | docs/plan/FEATURE-57A9.md |
+| FEATURE-D254 | Checksum module (CRC-16 & CRC-32) | TODO | docs/plan/FEATURE-D254.md |
+| FEATURE-19C7 | Release v2.0.0 | TODO | docs/plan/FEATURE-19C7.md |
