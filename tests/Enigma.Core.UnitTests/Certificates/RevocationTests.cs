@@ -23,13 +23,18 @@ public class RevocationTests(CertificateKeyFixture keys)
     private static DateTimeOffset Ago(int days) => DateTimeOffset.UtcNow.AddDays(-days);
     private static DateTimeOffset FromNow(int days) => DateTimeOffset.UtcNow.AddDays(days);
 
+    // TestCrlBuilder signs CRLs with BouncyCastle directly (CRL generation has no product API), and the test
+    // project cannot see RsaKey's internal BouncyCastle key, so the signing key reaches it as a PEM.
+    private string RootKeyPem => keys.RootPrivateKey.ExportPrivateKeyPem();
+    private string UnrelatedRootKeyPem => keys.UnrelatedRootPrivateKey.ExportPrivateKeyPem();
+
     // Root CA + a leaf issued directly by it, so a single root-signed CRL covers the whole (two-level) path.
     private (string rootPem, string leafPem) RootAndLeaf()
     {
         var service = keys.NewService();
-        var rootPem = service.GenerateSelfSignedCertificate("CN=Root CA", keys.RootPrivateKeyPem, Ago(1), FromNow(3650), options: CaOptions);
-        var csr = service.GenerateCertificateSigningRequest("CN=revocable.example.com", keys.LeafPrivateKeyPem);
-        var leafPem = service.IssueCertificate(csr, rootPem, keys.RootPrivateKeyPem, Ago(1), FromNow(365));
+        var rootPem = service.GenerateSelfSignedCertificate("CN=Root CA", keys.RootPrivateKey, Ago(1), FromNow(3650), options: CaOptions);
+        var csr = service.GenerateCertificateSigningRequest("CN=revocable.example.com", keys.LeafPrivateKey);
+        var leafPem = service.IssueCertificate(csr, rootPem, keys.RootPrivateKey, Ago(1), FromNow(365));
         return (rootPem, leafPem);
     }
 
@@ -37,7 +42,7 @@ public class RevocationTests(CertificateKeyFixture keys)
     public void IsRevoked_RevokedLeaf_ReturnsTrue()
     {
         var (rootPem, leafPem) = RootAndLeaf();
-        var crlPem = TestCrlBuilder.CreateCrl(rootPem, keys.RootPrivateKeyPem, leafPem);
+        var crlPem = TestCrlBuilder.CreateCrl(rootPem, RootKeyPem, leafPem);
 
         Assert.True(keys.NewService().IsRevoked(leafPem, crlPem, rootPem));
     }
@@ -46,7 +51,7 @@ public class RevocationTests(CertificateKeyFixture keys)
     public void IsRevoked_UnrevokedLeaf_AgainstEmptyCrl_ReturnsFalse()
     {
         var (rootPem, leafPem) = RootAndLeaf();
-        var emptyCrlPem = TestCrlBuilder.CreateCrl(rootPem, keys.RootPrivateKeyPem);
+        var emptyCrlPem = TestCrlBuilder.CreateCrl(rootPem, RootKeyPem);
 
         Assert.False(keys.NewService().IsRevoked(leafPem, emptyCrlPem, rootPem));
     }
@@ -56,7 +61,7 @@ public class RevocationTests(CertificateKeyFixture keys)
     {
         var (rootPem, leafPem) = RootAndLeaf();
         // A CRL that revokes a *different* certificate (the root itself) must not mark the leaf revoked.
-        var crlPem = TestCrlBuilder.CreateCrl(rootPem, keys.RootPrivateKeyPem, rootPem);
+        var crlPem = TestCrlBuilder.CreateCrl(rootPem, RootKeyPem, rootPem);
 
         Assert.False(keys.NewService().IsRevoked(leafPem, crlPem, rootPem));
     }
@@ -67,8 +72,8 @@ public class RevocationTests(CertificateKeyFixture keys)
         var (rootPem, leafPem) = RootAndLeaf();
         // A self-consistent CRL from an unrelated CA — its signature will not verify against the real root's key.
         var unrelatedRootPem = keys.NewService().GenerateSelfSignedCertificate(
-            "CN=Unrelated Root CA", keys.UnrelatedRootPrivateKeyPem, Ago(1), FromNow(3650), options: CaOptions);
-        var foreignCrlPem = TestCrlBuilder.CreateCrl(unrelatedRootPem, keys.UnrelatedRootPrivateKeyPem, leafPem);
+            "CN=Unrelated Root CA", keys.UnrelatedRootPrivateKey, Ago(1), FromNow(3650), options: CaOptions);
+        var foreignCrlPem = TestCrlBuilder.CreateCrl(unrelatedRootPem, UnrelatedRootKeyPem, leafPem);
 
         Assert.Throws<CryptographicException>(() => keys.NewService().IsRevoked(leafPem, foreignCrlPem, rootPem));
     }
@@ -90,7 +95,7 @@ public class RevocationTests(CertificateKeyFixture keys)
         var (rootPem, leafPem) = RootAndLeaf();
         // A CRL that parses cleanly but whose signature-algorithm OID no verifier recognises must surface as a
         // CryptographicException, never a raw BouncyCastle SecurityUtilityException ("Signing mechanism … not recognised.").
-        var crlPem = TestCrlBuilder.CreateCrlWithUnknownSignatureAlgorithm(rootPem, keys.RootPrivateKeyPem, leafPem);
+        var crlPem = TestCrlBuilder.CreateCrlWithUnknownSignatureAlgorithm(rootPem, RootKeyPem, leafPem);
 
         Assert.Throws<CryptographicException>(() => keys.NewService().IsRevoked(leafPem, crlPem, rootPem));
     }
@@ -107,7 +112,7 @@ public class RevocationTests(CertificateKeyFixture keys)
     public void ValidateChain_PerformsNoRevocationCheck()
     {
         var (rootPem, leafPem) = RootAndLeaf();
-        var crlPem = TestCrlBuilder.CreateCrl(rootPem, keys.RootPrivateKeyPem, leafPem);
+        var crlPem = TestCrlBuilder.CreateCrl(rootPem, RootKeyPem, leafPem);
         var service = keys.NewService();
 
         // The leaf is genuinely revoked by the CRL...

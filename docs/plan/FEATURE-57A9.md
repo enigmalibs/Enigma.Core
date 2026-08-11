@@ -1,6 +1,6 @@
 # FEATURE-57A9 — Certificates on the `RsaKey` handle (BREAKING)
 
-**Status:** TODO (single-phase)
+**Status:** DONE (single-phase)
 **Type:** FEATURE
 **Branch (at build time):** `feature/feature-57a9-certificates-rsakey` — cut from current `HEAD`.
 

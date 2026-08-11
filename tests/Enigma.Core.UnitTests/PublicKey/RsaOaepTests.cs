@@ -24,8 +24,8 @@ public class RsaOaepTests(RsaKeyFixture keys)
         var service = Service();
         var plaintext = System.Text.Encoding.UTF8.GetBytes($"OAEP round-trip with {hash}");
 
-        var encrypted = service.EncryptOaep(plaintext, keys.PublicKeyPem, hash);
-        var decrypted = service.DecryptOaep(encrypted, keys.PrivateKeyPem, hash);
+        var encrypted = service.EncryptOaep(plaintext, keys.PublicKey, hash);
+        var decrypted = service.DecryptOaep(encrypted, keys.PrivateKey, hash);
 
         Assert.Equal(plaintext, decrypted);
     }
@@ -37,8 +37,8 @@ public class RsaOaepTests(RsaKeyFixture keys)
         var plaintext = System.Text.Encoding.UTF8.GetBytes("pin the default OAEP hash");
 
         // Encrypt with the default hash; an explicit SHA-256 decrypt must succeed, proving the default is SHA-256.
-        var encrypted = service.EncryptOaep(plaintext, keys.PublicKeyPem);
-        var decrypted = service.DecryptOaep(encrypted, keys.PrivateKeyPem, RsaOaepHash.Sha256);
+        var encrypted = service.EncryptOaep(plaintext, keys.PublicKey);
+        var decrypted = service.DecryptOaep(encrypted, keys.PrivateKey, RsaOaepHash.Sha256);
 
         Assert.Equal(plaintext, decrypted);
     }
@@ -49,10 +49,10 @@ public class RsaOaepTests(RsaKeyFixture keys)
         var service = Service();
         var plaintext = System.Text.Encoding.UTF8.GetBytes("mismatched OAEP hash");
 
-        var encrypted = service.EncryptOaep(plaintext, keys.PublicKeyPem, RsaOaepHash.Sha256);
+        var encrypted = service.EncryptOaep(plaintext, keys.PublicKey, RsaOaepHash.Sha256);
 
         Assert.Throws<CryptographicException>(
-            () => service.DecryptOaep(encrypted, keys.PrivateKeyPem, RsaOaepHash.Sha512));
+            () => service.DecryptOaep(encrypted, keys.PrivateKey, RsaOaepHash.Sha512));
     }
 
     [Fact]
@@ -61,10 +61,10 @@ public class RsaOaepTests(RsaKeyFixture keys)
         var service = Service();
         var plaintext = System.Text.Encoding.UTF8.GetBytes("corrupt me");
 
-        var encrypted = service.EncryptOaep(plaintext, keys.PublicKeyPem);
+        var encrypted = service.EncryptOaep(plaintext, keys.PublicKey);
         encrypted[0] ^= 0xFF; // flip a byte
 
         Assert.Throws<CryptographicException>(
-            () => service.DecryptOaep(encrypted, keys.PrivateKeyPem));
+            () => service.DecryptOaep(encrypted, keys.PrivateKey));
     }
 }

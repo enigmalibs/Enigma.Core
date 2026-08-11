@@ -24,16 +24,16 @@ public class CertificateInfoTests(CertificateKeyFixture keys)
     private static readonly DateTimeOffset NotAfter = new(2035, 12, 31, 23, 59, 59, TimeSpan.Zero);
 
     private string SelfSigned(string dn, X509CertificateOptions? options = null) =>
-        keys.NewService().GenerateSelfSignedCertificate(dn, keys.RootPrivateKeyPem, NotBefore, NotAfter, options: options);
+        keys.NewService().GenerateSelfSignedCertificate(dn, keys.RootPrivateKey, NotBefore, NotAfter, options: options);
 
     [Fact]
     public void GetCertificateInfo_Issued_IssuerDiffersFromSubject()
     {
         var service = keys.NewService();
-        var ca = service.GenerateSelfSignedCertificate("CN=CA", keys.RootPrivateKeyPem, NotBefore, NotAfter,
+        var ca = service.GenerateSelfSignedCertificate("CN=CA", keys.RootPrivateKey, NotBefore, NotAfter,
             options: new X509CertificateOptions { IsCertificateAuthority = true });
-        var csr = service.GenerateCertificateSigningRequest("CN=Leaf", keys.LeafPrivateKeyPem);
-        var leaf = service.IssueCertificate(csr, ca, keys.RootPrivateKeyPem, NotBefore, NotAfter);
+        var csr = service.GenerateCertificateSigningRequest("CN=Leaf", keys.LeafPrivateKey);
+        var leaf = service.IssueCertificate(csr, ca, keys.RootPrivateKey, NotBefore, NotAfter);
 
         var info = service.GetCertificateInfo(leaf);
 
@@ -139,7 +139,9 @@ public class CertificateInfoTests(CertificateKeyFixture keys)
         // throws — the internal extractor must swallow that and return an empty list, not surface it.
         var malformedSanValue = new DerSequence(
             new DerTaggedObject(isExplicit: false, GeneralName.DnsName, new DerSequence(DerInteger.ValueOf(1))));
-        var certPem = BuildSelfSignedCertWithRawSan(keys.RootPrivateKeyPem, malformedSanValue);
+        // The helper signs with BouncyCastle directly, and the test project cannot see RsaKey's internal
+        // BouncyCastle key, so the signing key reaches it as a PEM.
+        var certPem = BuildSelfSignedCertWithRawSan(keys.RootPrivateKey.ExportPrivateKeyPem(), malformedSanValue);
 
         var info = keys.NewService().GetCertificateInfo(certPem);
 

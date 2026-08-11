@@ -8,9 +8,11 @@ algorithm is exposed through the same small pattern — create a factory, ask it
 need, call the operation — and the factory interfaces register cleanly in any dependency-injection
 container. BouncyCastle powers the implementations but never leaks onto the public surface.
 
-> **What's new in 1.1** — now built on BouncyCastle 2.7.0; the public API and its behaviour are
-> unchanged, and ML-KEM/ML-DSA encodings stay byte-compatible with 1.0.0. See
-> [RELEASENOTES.md](RELEASENOTES.md) for the full details.
+> **What's new in 2.0** — breaking: RSA key material now crosses the API as a reusable `RsaKey`
+> handle instead of PEM text, in both the public-key and certificate modules, with the passphrase
+> supplied once at import; new are ML-DSA/ML-KEM key PEM support and a CRC checksum module. Existing
+> key files still load — only the API changed. See [RELEASENOTES.md](RELEASENOTES.md) for the full
+> details.
 
 ## Features
 
@@ -18,10 +20,13 @@ container. BouncyCastle powers the implementations but never leaks onto the publ
   ARIA, and SM4, in ECB / CBC / CTR / GCM modes (GCM with additional authenticated data).
 - **Stream ciphers** — ChaCha20, ChaCha20-RFC7539, and Salsa20.
 - **Padding** — None, PKCS#7, ISO 7816-4, ISO 10126-2, and ANSI X9.23.
-- **Public-key (RSA)** — key generation with PEM import/export (optionally AES-256-CBC-encrypted
-  private keys), PKCS#1 v1.5 and OAEP encryption, and RSASSA-PKCS1-v1_5 signing/verification.
+- **Public-key (RSA)** — key generation, PKCS#1 v1.5 and OAEP encryption, and RSASSA-PKCS1-v1_5
+  signing/verification, all over a reusable `RsaKey` handle: a PEM is parsed — and its passphrase
+  supplied — once, at import, with PEM import/export (optionally PBES2-encrypted private keys) on
+  the handle itself.
 - **Post-quantum (PQC)** — ML-KEM 512/768/1024 (FIPS 203) key encapsulation and ML-DSA 44/65/87
-  (FIPS 204) signatures.
+  (FIPS 204) signatures. Both families also have PEM import/export (optionally PBES2-encrypted
+  private keys), recovering the parameter set from the PEM on read.
 - **X.509 certificates** — self-signed generation, CSR creation & verification, CA issuance, chain
   validation, CRL-based revocation checks, PKCS#12 and DER import/export, and certificate inspection
   (including thumbprint).
@@ -30,12 +35,15 @@ container. BouncyCastle powers the implementations but never leaks onto the publ
 - **One-time passwords** — HOTP (RFC 4226), TOTP (RFC 6238), and `otpauth://` provisioning URIs.
 - **Key derivation** — PBKDF2 (four PRFs) and Argon2 (Argon2d/i/id).
 - **Encoding** — Base64, Base32 (RFC 4648), and hexadecimal.
+- **Checksums** — CRC-16 (ARC, CCITT-FALSE, XMODEM, MODBUS, KERMIT) and CRC-32 (ISO-HDLC, CRC-32C),
+  as bytes or as a `uint`, over buffers or streams. Error detection only, in their own namespace so
+  a CRC can never stand in for a cryptographic digest.
 
 ### Asynchronous, cancellable, observable
 
-The streaming operations — block and stream ciphers, hashing, and HMAC — expose `async` APIs that
-accept an `IProgress<int>` for progress reporting and a `CancellationToken` for cancellation, so
-large-payload work stays responsive.
+The streaming operations — block and stream ciphers, hashing, HMAC, and checksums — expose `async`
+APIs that accept an `IProgress<int>` for progress reporting and a `CancellationToken` for
+cancellation, so large-payload work stays responsive.
 
 ## Installation
 
