@@ -1,129 +1,51 @@
 using System;
-using System.IO;
-using System.Security.Cryptography;
+using Enigma.Core.Internal;
 using Org.BouncyCastle.Crypto;
-using Org.BouncyCastle.OpenSsl;
-using Org.BouncyCastle.Security;
-// BouncyCastle 2.7.0 moved PasswordException into Org.BouncyCastle.OpenSsl; the Security namespace keeps an
-// [Obsolete] base of the same name, so the unqualified name is ambiguous across the two usings above.
-using PasswordException = Org.BouncyCastle.OpenSsl.PasswordException;
 
 namespace Enigma.Core.Asymmetric.PublicKey;
 
 /// <summary>
-/// Internal PEM parsing and serialization for RSA keys, backed by BouncyCastle's OpenSSL PEM reader/writer.
-/// Kept entirely internal so no BouncyCastle type (nor a public <c>PemUtils</c>/<c>PemPasswordFinder</c>) ever
-/// reaches the public surface (principle 1): keys cross the API only as PEM strings and passphrases only as
-/// <see cref="char"/> arrays. Structural PEM problems surface as <see cref="ArgumentException"/>; decryption
-/// failures (e.g. a wrong password) surface as <see cref="CryptographicException"/>.
+/// The RSA-facing adapter over <see cref="PemEnvelope"/>, the library's single PEM implementation. It adds only
+/// the <see cref="ArgumentNullException"/> guard the PEM-string API contract requires and forwards the calling
+/// parameter's name, so a malformed PEM is reported against the argument the caller actually passed.
 /// </summary>
+/// <remarks>
+/// Kept entirely internal so no BouncyCastle type (nor a public <c>PemUtils</c>) reaches the public surface
+/// (principle 1). The encryption scheme, the read dispatch and the BouncyCastle exception mapping all live in
+/// <see cref="PemEnvelope"/> and are deliberately not restated here: structural PEM problems surface as
+/// <see cref="ArgumentException"/>, decryption failures (a wrong or missing password) as
+/// <see cref="System.Security.Cryptography.CryptographicException"/>.
+/// </remarks>
 internal static class PemUtils
 {
-    // AES-256-CBC is the default cipher for an encrypted private-key PEM. BouncyCastle's high-level PEM writer
-    // pairs this with the traditional OpenSSL "RSA PRIVATE KEY" envelope (Proc-Type/DEK-Info); PKCS#8
-    // "ENCRYPTED PRIVATE KEY" output only supports legacy PBE ciphers in this library version.
-    private const string EncryptedPemAlgorithm = "AES-256-CBC";
-
     /// <summary>Parses an RSA public key from a PEM string.</summary>
     internal static AsymmetricKeyParameter ParsePublicKey(string publicKeyPem)
     {
         if (publicKeyPem is null) throw new ArgumentNullException(nameof(publicKeyPem));
-        if (string.IsNullOrWhiteSpace(publicKeyPem))
-            throw new ArgumentException("The public-key PEM must not be empty.", nameof(publicKeyPem));
 
-        object? obj;
-        try
-        {
-            using var reader = new StringReader(publicKeyPem);
-            obj = new PemReader(reader).ReadObject();
-        }
-        catch (IOException ex)
-        {
-            throw new ArgumentException("The public-key PEM is malformed.", nameof(publicKeyPem), ex);
-        }
-
-        return obj switch
-        {
-            AsymmetricKeyParameter { IsPrivate: false } key => key,
-            AsymmetricCipherKeyPair pair => pair.Public,
-            _ => throw new ArgumentException("The PEM does not contain a valid RSA public key.", nameof(publicKeyPem)),
-        };
+        return PemEnvelope.ReadPublicKey(publicKeyPem, nameof(publicKeyPem));
     }
 
-    /// <summary>Parses an RSA private key from a (optionally encrypted) PEM string.</summary>
+    /// <summary>
+    /// Parses an RSA private key from an optionally encrypted PEM string. All three private-key forms are
+    /// accepted: unencrypted PKCS#8, PBES2-encrypted PKCS#8, and the traditional OpenSSL envelope.
+    /// </summary>
     internal static AsymmetricKeyParameter ParsePrivateKey(string privateKeyPem, char[]? password)
     {
         if (privateKeyPem is null) throw new ArgumentNullException(nameof(privateKeyPem));
-        if (string.IsNullOrWhiteSpace(privateKeyPem))
-            throw new ArgumentException("The private-key PEM must not be empty.", nameof(privateKeyPem));
 
-        object? obj;
-        try
-        {
-            using var reader = new StringReader(privateKeyPem);
-            // A password finder is only wired in when a passphrase is supplied; an unencrypted PEM needs none.
-            var pemReader = password is null
-                ? new PemReader(reader)
-                : new PemReader(reader, new CharArrayPasswordFinder(password));
-            obj = pemReader.ReadObject();
-        }
-        catch (PasswordException ex)
-        {
-            throw new CryptographicException("The private-key PEM is encrypted; a password is required.", ex);
-        }
-        catch (InvalidCipherTextException ex)
-        {
-            throw new CryptographicException("The private-key PEM could not be decrypted; the password may be incorrect.", ex);
-        }
-        catch (PemException ex)
-        {
-            throw new CryptographicException("The private-key PEM could not be decrypted; the password may be incorrect.", ex);
-        }
-        catch (IOException ex)
-        {
-            throw new ArgumentException("The private-key PEM is malformed.", nameof(privateKeyPem), ex);
-        }
-
-        return obj switch
-        {
-            AsymmetricCipherKeyPair pair => pair.Private,
-            AsymmetricKeyParameter { IsPrivate: true } key => key,
-            _ => throw new ArgumentException("The PEM does not contain a valid RSA private key.", nameof(privateKeyPem)),
-        };
+        return PemEnvelope.ReadPrivateKey(privateKeyPem, password, nameof(privateKeyPem));
     }
 
     /// <summary>Serializes an RSA public key to a <c>PUBLIC KEY</c> PEM string.</summary>
     internal static string WritePublicKeyPem(AsymmetricKeyParameter publicKey)
-    {
-        using var writer = new StringWriter();
-        new PemWriter(writer).WriteObject(publicKey);
-        return writer.ToString();
-    }
+        => PemEnvelope.WritePublicKeyPem(publicKey);
 
     /// <summary>
     /// Serializes an RSA private key to a PEM string: an unencrypted PKCS#8 <c>PRIVATE KEY</c> PEM when
-    /// <paramref name="password"/> is <see langword="null"/>, or an AES-256-CBC-encrypted private-key PEM otherwise.
+    /// <paramref name="password"/> is <see langword="null"/>, or a PBES2 <c>ENCRYPTED PRIVATE KEY</c> PEM
+    /// otherwise. The caller's password array is used as-is and is never cleared here.
     /// </summary>
     internal static string WritePrivateKeyPem(AsymmetricKeyParameter privateKey, char[]? password)
-    {
-        using var writer = new StringWriter();
-        var pemWriter = new PemWriter(writer);
-        if (password is null)
-            pemWriter.WriteObject(new Pkcs8Generator(privateKey));
-        else
-            // The caller's array is used directly and is not cleared here — the caller owns its lifetime.
-            pemWriter.WriteObject(privateKey, EncryptedPemAlgorithm, password, new SecureRandom());
-        return writer.ToString();
-    }
-
-    // Adapts a char[] passphrase to BouncyCastle's IPasswordFinder. GetPassword returns a clone because the
-    // PEM reader may clear the array it receives; the caller's original passphrase must stay intact.
-    private sealed class CharArrayPasswordFinder : IPasswordFinder
-    {
-        private readonly char[] _password;
-
-        internal CharArrayPasswordFinder(char[] password) => _password = password;
-
-        public char[] GetPassword() => (char[])_password.Clone();
-    }
+        => PemEnvelope.WritePrivateKeyPem(privateKey, password);
 }

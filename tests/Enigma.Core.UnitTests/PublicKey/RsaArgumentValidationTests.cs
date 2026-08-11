@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Security.Cryptography;
 using Enigma.Core;
 using Enigma.Core.Asymmetric.PublicKey;
@@ -15,6 +16,9 @@ public class RsaArgumentValidationTests(RsaKeyFixture keys)
 {
     private static IPublicKeyService Service() => new PublicKeyServiceFactory().CreatePublicKeyService();
     private static readonly byte[] SomeData = { 1, 2, 3, 4 };
+
+    /// <summary>The passphrase protecting the committed <c>pk_key_legacy_encrypted.pem</c> fixture.</summary>
+    private const string LegacyFixturePassphrase = "legacy1234";
 
     // ---- null data / signature ----
 
@@ -94,17 +98,21 @@ public class RsaArgumentValidationTests(RsaKeyFixture keys)
     public void PrivateKeyOperation_UnsupportedDekAlgorithm_ThrowsArgumentException()
     {
         // Characterization, not a design statement: an unrecognised DEK-Info cipher makes BouncyCastle raise
-        // EncryptionException, which PemUtils does not catch explicitly — it falls through to catch (IOException)
-        // and surfaces as ArgumentException("malformed"). That is the intended reading (an unknown cipher header
-        // is a structural PEM defect, not a failed decryption), and this test pins it so a future BouncyCastle
-        // change to that path shows up red instead of silently altering the exception a caller sees.
-        var service = Service();
-        var (_, encryptedPrivatePem) = service.GenerateRsaKeyPair(2048, "correct-password".ToCharArray());
-        var bogusDekPem = encryptedPrivatePem.Replace("DEK-Info: AES-256-CBC", "DEK-Info: NOT-A-REAL-CIPHER");
+        // EncryptionException, which PemEnvelope does not catch explicitly — it falls through to
+        // catch (IOException) and surfaces as ArgumentException("malformed"). That is the intended reading (an
+        // unknown cipher header is a structural PEM defect, not a failed decryption), and this test pins it so a
+        // future BouncyCastle change to that path shows up red instead of silently altering the exception a
+        // caller sees.
+        //
+        // The input is built from the committed legacy fixture rather than from freshly generated output: the
+        // writer now emits PBES2, which carries no DEK-Info header to corrupt. The fixture is the library's only
+        // remaining source of the traditional OpenSSL envelope, and this path only exists for reading it.
+        var legacyPem = File.ReadAllText(Path.Combine("PublicKey", "pk_key_legacy_encrypted.pem"));
+        var bogusDekPem = legacyPem.Replace("DEK-Info: AES-256-CBC", "DEK-Info: NOT-A-REAL-CIPHER");
 
-        Assert.NotEqual(encryptedPrivatePem, bogusDekPem);
+        Assert.NotEqual(legacyPem, bogusDekPem);
         Assert.Throws<ArgumentException>(
-            () => service.Sign(SomeData, bogusDekPem, password: "correct-password".ToCharArray()));
+            () => Service().Sign(SomeData, bogusDekPem, password: LegacyFixturePassphrase.ToCharArray()));
     }
 
     [Fact]

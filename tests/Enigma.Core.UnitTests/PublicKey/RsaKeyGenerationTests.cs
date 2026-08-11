@@ -26,13 +26,18 @@ public class RsaKeyGenerationTests
     }
 
     [Fact]
-    public void GenerateRsaKeyPair_WithPassword_ProducesAes256CbcEncryptedPrivateKeyPem()
+    public void GenerateRsaKeyPair_WithPassword_ProducesPbes2EncryptedPrivateKeyPem()
     {
         var (_, privateKeyPem) = Service().GenerateRsaKeyPair(2048, "pass-phrase".ToCharArray());
 
-        Assert.Contains("-----BEGIN RSA PRIVATE KEY-----", privateKeyPem);
-        Assert.Contains("Proc-Type: 4,ENCRYPTED", privateKeyPem);
-        Assert.Contains("DEK-Info: AES-256-CBC", privateKeyPem);
+        // The emitted format is PKCS#8 PBES2 (PBKDF2-HMAC-SHA256 + AES-256-CBC), not the traditional OpenSSL
+        // envelope this test used to pin: that one derives its key with OpenSSL's legacy EVP_BytesToKey
+        // (MD5, a single iteration). Reading still accepts the old form — see RsaKeyTests and the committed
+        // pk_key_legacy_encrypted.pem fixture — so existing key files keep working.
+        Assert.Contains("-----BEGIN ENCRYPTED PRIVATE KEY-----", privateKeyPem);
+        Assert.DoesNotContain("RSA PRIVATE KEY", privateKeyPem);
+        Assert.DoesNotContain("Proc-Type", privateKeyPem);
+        Assert.DoesNotContain("DEK-Info", privateKeyPem);
     }
 
     [Fact]

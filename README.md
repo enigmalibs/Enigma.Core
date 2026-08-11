@@ -18,7 +18,7 @@ container. BouncyCastle powers the implementations but never leaks onto the publ
   ARIA, and SM4, in ECB / CBC / CTR / GCM modes (GCM with additional authenticated data).
 - **Stream ciphers** — ChaCha20, ChaCha20-RFC7539, and Salsa20.
 - **Padding** — None, PKCS#7, ISO 7816-4, ISO 10126-2, and ANSI X9.23.
-- **Public-key (RSA)** — key generation with PEM import/export (optionally AES-256-CBC-encrypted
+- **Public-key (RSA)** — key generation with PEM import/export (optionally PBES2-encrypted
   private keys), PKCS#1 v1.5 and OAEP encryption, and RSASSA-PKCS1-v1_5 signing/verification.
 - **Post-quantum (PQC)** — ML-KEM 512/768/1024 (FIPS 203) key encapsulation and ML-DSA 44/65/87
   (FIPS 204) signatures. Both families also have PEM import/export (optionally PBES2-encrypted

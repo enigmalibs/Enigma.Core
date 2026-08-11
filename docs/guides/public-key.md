@@ -150,9 +150,10 @@ Console.WriteLine(valid); // True
 
 ### Protecting the private key with a passphrase
 
-Pass a `char[]` password to `GenerateRsaKeyPair` to receive an AES-256-CBC
-encrypted private-key PEM. Supply the same password back to any private
-operation (`DecryptPkcs1`, `DecryptOaep`, `Sign`).
+Pass a `char[]` password to `GenerateRsaKeyPair` to receive a PBES2-encrypted
+private-key PEM (`ENCRYPTED PRIVATE KEY`, PBKDF2-HMAC-SHA256 + AES-256-CBC).
+Supply the same password back to any private operation (`DecryptPkcs1`,
+`DecryptOaep`, `Sign`).
 
 ```csharp
 using System;
@@ -166,7 +167,7 @@ IPublicKeyService rsa = factory.CreatePublicKeyService();
 char[] password = "correct horse battery staple".ToCharArray();
 
 (string publicKeyPem, string privateKeyPem) = rsa.GenerateRsaKeyPair(2048, password);
-// privateKeyPem -> "-----BEGIN ENCRYPTED PRIVATE KEY----- ..." (AES-256-CBC)
+// privateKeyPem -> "-----BEGIN ENCRYPTED PRIVATE KEY----- ..." (PBES2)
 
 byte[] message = "release approved".GetUtf8Bytes();
 
@@ -190,10 +191,16 @@ Console.WriteLine(valid); // True
   API. To encrypt a large payload, encrypt a symmetric key with RSA and encrypt
   the data with that symmetric key (hybrid encryption).
 - **Encrypted private keys.** When `password` is `null`, the private-key PEM is
-  unencrypted. When a passphrase is supplied, the private-key PEM is encrypted
-  with AES-256-CBC, and the same `char[]` password must be passed to every
-  private operation. The library does not clear the password array — the caller
-  owns clearing it (for example with `Array.Clear`).
+  unencrypted (PKCS#8 `PRIVATE KEY`). When a passphrase is supplied, the
+  private-key PEM is encrypted with PBES2 (`ENCRYPTED PRIVATE KEY`,
+  PBKDF2-HMAC-SHA256 at 600 000 iterations + AES-256-CBC), and the same `char[]`
+  password must be passed to every private operation. The library does not clear
+  the password array — the caller owns clearing it (for example with
+  `Array.Clear`).
+- **Older key files still load.** Reading accepts all three private-key PEM
+  forms: unencrypted PKCS#8, PBES2, and the traditional OpenSSL envelope
+  (`RSA PRIVATE KEY` with `Proc-Type`/`DEK-Info`) that earlier versions of this
+  library wrote. Only the *written* format changed.
 - **Match both sides.** Decrypt with the `RsaOaepHash` used to encrypt, and
   verify with the `RsaSignatureAlgorithm` used to sign. Both default to the
   SHA-256 variant.
